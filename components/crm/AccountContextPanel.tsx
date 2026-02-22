@@ -147,11 +147,11 @@ export default function AccountContextPanel({
       )}
     >
       {/* Header — account name and badges */}
-      <div className="flex flex-col gap-density-sm border-b border-border px-density-md py-density-sm dark:border-gray-800">
-        <div className="flex items-start gap-2">
+      <div className="flex flex-col gap-density-sm border-b border-border px-density-md py-density-md dark:border-gray-800">
+        <div className="flex items-start gap-3">
           <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2C365D] font-bold text-white"
-            style={{ fontSize: "var(--tally-font-size-xs)" }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2C365D] font-bold text-white"
+            style={{ fontSize: "var(--tally-font-size-sm)" }}
           >
             {account.name
               .split(" ")
@@ -161,14 +161,14 @@ export default function AccountContextPanel({
           </div>
           <div className="min-w-0 flex-1 flex flex-col gap-1.5">
             <p
-              className="truncate font-semibold text-gray-900 dark:text-gray-100"
-              style={{ fontSize: "var(--tally-font-size-xs)" }}
+              className="font-bold text-gray-900 dark:text-gray-100 break-words"
+              style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}
             >
               {account.name}
             </p>
             <p
               className="text-muted-foreground"
-              style={{ fontSize: "var(--tally-font-size-xs)" }}
+              style={{ fontSize: "var(--tally-font-size-sm)" }}
             >
               {account.accountNumber}
             </p>

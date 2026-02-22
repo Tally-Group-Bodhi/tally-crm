@@ -256,7 +256,7 @@ export default function OrgManagementPage() {
               value="org-chart"
               className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
             >
-              Org Chart
+              Card View
             </TabsTrigger>
           </TabsList>
 

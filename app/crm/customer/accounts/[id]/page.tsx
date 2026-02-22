@@ -170,7 +170,7 @@ export default function AccountSettingsPage() {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-[900px] p-6">
+      <div className="mx-auto w-full min-w-0 max-w-[1400px] p-6">
         {/* Breadcrumbs */}
         <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
           <Link
@@ -225,7 +225,7 @@ export default function AccountSettingsPage() {
               value="org-chart"
               className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
             >
-              Org Chart
+              Card View
             </TabsTrigger>
           </TabsList>
 

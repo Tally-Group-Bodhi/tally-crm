@@ -69,29 +69,29 @@ export default function ContactContextPanel({
       )}
     >
       {/* Header — avatar + name + email, Edit button */}
-      <div className="flex items-center gap-2 border-b border-border px-density-md py-density-sm dark:border-gray-800">
+      <div className="flex items-start gap-3 border-b border-border px-density-md py-density-md dark:border-gray-800">
         <div
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#2C365D] font-bold text-white"
-          style={{ fontSize: "var(--tally-font-size-xs)" }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2C365D] font-bold text-white"
+          style={{ fontSize: "var(--tally-font-size-sm)" }}
         >
           {initials}
         </div>
         <div className="min-w-0 flex-1">
           <p
-            className="truncate font-semibold text-gray-900 dark:text-gray-100"
-            style={{ fontSize: "var(--tally-font-size-sm)" }}
+            className="font-bold text-gray-900 dark:text-gray-100 break-words"
+            style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}
           >
             {contact.name}
           </p>
           <p
-            className="truncate text-muted-foreground"
+            className="text-muted-foreground break-words"
             title={contact.email}
-            style={{ fontSize: "var(--tally-font-size-xs)" }}
+            style={{ fontSize: "var(--tally-font-size-sm)" }}
           >
             {contact.email || "—"}
           </p>
         </div>
-        <Button variant="outline" size="sm" className="h-7 shrink-0 gap-1 px-2" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+        <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1 px-2" style={{ fontSize: "var(--tally-font-size-xs)" }}>
           <Icon name="edit" size={14} />
           Edit
         </Button>
