@@ -6,7 +6,6 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
-  Controls,
   Handle,
   type Node,
   type Edge,
@@ -15,25 +14,49 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { getAccountsByOrgId, getAccountById } from "@/lib/mock-data/accounts";
+import { getCasesByAccountId } from "@/lib/mock-data/cases";
 import type { Org } from "@/types/crm";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 
-const NODE_WIDTH = 220;
-const NODE_HEIGHT_ORG = 56;
-const NODE_HEIGHT_ACCOUNT = 52;
-const NODE_HEIGHT_CONTACT = 48;
-const LEVEL_GAP = 120;
-const ROW_GAP = 24;
-const COL_GAP = 32;
+const CARD_W = { gp: 380, company: 230 };
+const CARD_H = { gp: 72, company: 68 };
+const V_GAP = 80;
+const H_GAP = 40;
+
+const BASE_CARD = {
+  background: "#ffffff",
+  borderRadius: 8,
+  boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)",
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+  padding: "10px 14px",
+  fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
+  cursor: "default",
+  transition: "box-shadow 0.15s",
+} as const;
+
+function getInitials(label: string): string {
+  const parts = label.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0]?.[0] ?? "?").toUpperCase();
+}
+
+const AVATAR_HEX = ["#8b5cf6", "#3b82f6", "#6366f1", "#ec4899", "#f59e0b", "#10b981", "#06b6d4"] as const;
+
+function getAvatarHex(name: string, index: number): string {
+  const hash = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return AVATAR_HEX[(hash + index) % AVATAR_HEX.length];
+}
 
 type OrgChartNodeData = {
-  label: string;
+  label?: string;
   sublabel?: string;
   href?: string;
-  type: "org" | "account" | "contact";
+  type: "org" | "account";
   accountNumber?: string;
-  role?: string;
   /** When viewing from an account, the main account is emphasized */
   isFocus?: boolean;
   /** Linked / other accounts when a focus account is set – shown subtly */
@@ -43,24 +66,34 @@ type OrgChartNodeData = {
 function OrgNode({ data }: NodeProps<Node<OrgChartNodeData>>) {
   return (
     <div
-      className={cn(
-        "relative flex items-center gap-3 rounded-lg border-2 border-[#2C365D] bg-white px-3 py-2.5 shadow-sm dark:border-[#7c8cb8] dark:bg-gray-800"
-      )}
-      style={{ minWidth: NODE_WIDTH }}
+      style={{
+        ...BASE_CARD,
+        width: CARD_W.gp,
+        height: CARD_H.gp,
+        borderLeft: "3px solid #6264a7",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1), 0 0 0 1px rgba(98,100,167,0.15)",
+        position: "relative",
+      }}
     >
-      <Handle id="target" type="target" position={Position.Top} className="!border-2 !border-[#2C365D] !bg-white dark:!border-[#7c8cb8] dark:!bg-gray-800" />
-      <Handle id="source" type="source" position={Position.Bottom} className="!border-2 !border-[#2C365D] !bg-white dark:!border-[#7c8cb8] dark:!bg-gray-800" />
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#2C365D]/10 dark:bg-[#7c8cb8]/20">
-        <Icon name="apartment" size={20} className="text-[#2C365D] dark:text-[#7c8cb8]" />
+      <Handle id="source" type="source" position={Position.Bottom} style={{ background: "#bdbdbd", width: 8, height: 8 }} />
+      <div
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 8,
+          background: "#ede9fe",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <Icon name="apartment" size={22} className="text-[#5b21b6]" />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
-          {data.label}
-        </p>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#252423", lineHeight: 1.3 }}>{data.label}</div>
         {data.sublabel && (
-          <p className="truncate text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
-            {data.sublabel}
-          </p>
+          <div style={{ fontSize: 11, color: "#8a8886", marginTop: 2 }}>{data.sublabel}</div>
         )}
       </div>
     </div>
@@ -70,113 +103,57 @@ function OrgNode({ data }: NodeProps<Node<OrgChartNodeData>>) {
 function AccountNode({ data }: NodeProps<Node<OrgChartNodeData>>) {
   const isFocus = data.isFocus;
   const isSubtle = data.isSubtle;
+  const initials = data.label ? getInitials(data.label) : "?";
+  const hex = getAvatarHex(data.label ?? "", 0);
   const content = (
     <div
-      className={cn(
-        "relative flex items-center gap-2.5 rounded-lg border px-3 py-2 shadow-sm",
-        isFocus &&
-          "border-2 border-[#2C365D] bg-white shadow-md dark:border-[#7c8cb8] dark:bg-gray-800 dark:shadow-lg",
-        isSubtle &&
-          "border border-gray-200 bg-gray-50/80 dark:border-gray-600 dark:bg-gray-800/60",
-        !isFocus && !isSubtle &&
-          "border border-border bg-white dark:border-gray-600 dark:bg-gray-800"
-      )}
-      style={{ minWidth: NODE_WIDTH }}
+      style={{
+        ...BASE_CARD,
+        width: CARD_W.company,
+        height: CARD_H.company,
+        borderLeft: `3px solid ${isFocus ? "#6264a7" : "#c7c7c7"}`,
+        boxShadow: isFocus
+          ? "0 0 0 2px #dce0f5, 0 2px 8px rgba(98,100,167,0.15)"
+          : "0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)",
+        position: "relative",
+        background: isSubtle ? "#fafafa" : undefined,
+      }}
     >
-      <Handle
-        id="target"
-        type="target"
-        position={Position.Top}
-        className={cn(
-          isFocus && "!border-2 !border-[#2C365D] !bg-white dark:!border-[#7c8cb8] dark:!bg-gray-800",
-          isSubtle && "!border !border-gray-300 !bg-gray-100 dark:!border-gray-500 dark:!bg-gray-700",
-          !isFocus && !isSubtle && "!border-2 !border-gray-400 !bg-white dark:!border-gray-500 dark:!bg-gray-800"
-        )}
-      />
-      <Handle
-        id="source"
-        type="source"
-        position={Position.Bottom}
-        className={cn(
-          isFocus && "!border-2 !border-[#2C365D] !bg-white dark:!border-[#7c8cb8] dark:!bg-gray-800",
-          isSubtle && "!border !border-gray-300 !bg-gray-100 dark:!border-gray-500 dark:!bg-gray-700",
-          !isFocus && !isSubtle && "!border-2 !border-gray-400 !bg-white dark:!border-gray-500 dark:!bg-gray-800"
-        )}
-      />
+      <Handle id="target" type="target" position={Position.Top} style={{ background: "#bdbdbd", width: 8, height: 8 }} />
+      <Handle id="source" type="source" position={Position.Bottom} style={{ background: "#bdbdbd", width: 8, height: 8 }} />
       <div
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
-          isFocus && "bg-[#2C365D]/10 dark:bg-[#7c8cb8]/20",
-          isSubtle && "bg-gray-100 dark:bg-gray-700",
-          !isFocus && !isSubtle && "bg-gray-100 dark:bg-gray-700"
-        )}
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          background: hex,
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 13,
+          fontWeight: 600,
+          flexShrink: 0,
+          letterSpacing: "0.3px",
+        }}
       >
-        <Icon
-          name="business"
-          size={18}
-          className={cn(
-            isFocus && "text-[#2C365D] dark:text-[#7c8cb8]",
-            (isSubtle || (!isFocus && !isSubtle)) && "text-gray-500 dark:text-gray-400"
-          )}
-        />
+        {initials}
       </div>
-      <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "truncate",
-            isFocus && "font-semibold text-gray-900 dark:text-gray-100",
-            isSubtle && "font-normal text-gray-500 dark:text-gray-400",
-            !isFocus && !isSubtle && "font-medium text-gray-900 dark:text-gray-100"
-          )}
-          style={{ fontSize: "var(--tally-font-size-sm)" }}
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: isSubtle ? "#8a8886" : "#252423",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
         >
           {data.label}
-        </p>
+        </div>
         {data.accountNumber && (
-          <p
-            className={cn(
-              "truncate",
-              isSubtle ? "text-gray-400 dark:text-gray-500" : "text-muted-foreground"
-            )}
-            style={{ fontSize: "var(--tally-font-size-xs)" }}
-          >
-            {data.accountNumber}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-  if (data.href) {
-    return (
-      <Link href={data.href} className="block">
-        {content}
-      </Link>
-    );
-  }
-  return content;
-}
-
-function ContactNode({ data }: NodeProps<Node<OrgChartNodeData>>) {
-  const content = (
-    <div
-      className={cn(
-        "relative flex items-center gap-2.5 rounded-lg border border-border bg-gray-50 px-3 py-1.5 shadow-sm dark:border-gray-600 dark:bg-gray-800/80"
-      )}
-      style={{ minWidth: NODE_WIDTH }}
-    >
-      <Handle id="target" type="target" position={Position.Top} className="!border-2 !border-gray-400 !bg-gray-100 dark:!border-gray-500 dark:!bg-gray-700" />
-      <Handle id="source" type="source" position={Position.Bottom} className="!border-2 !border-gray-400 !bg-gray-100 dark:!border-gray-500 dark:!bg-gray-700" />
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-gray-600">
-        <Icon name="person" size={14} className="text-gray-600 dark:text-gray-300" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
-          {data.label}
-        </p>
-        {data.role && (
-          <p className="truncate text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
-            {data.role}
-          </p>
+          <div style={{ fontSize: 11, color: "#8a8886", marginTop: 2 }}>{data.accountNumber}</div>
         )}
       </div>
     </div>
@@ -194,7 +171,6 @@ function ContactNode({ data }: NodeProps<Node<OrgChartNodeData>>) {
 const nodeTypes = {
   org: OrgNode,
   account: AccountNode,
-  contact: ContactNode,
 };
 
 function getAccountsToShow(org: Org, focusAccountId: string | undefined): ReturnType<typeof getAccountsByOrgId> {
@@ -231,19 +207,20 @@ function buildOrgChartData(orgs: Org[], focusAccountId: string | undefined) {
     });
   };
 
-  const colWidth = NODE_WIDTH + COL_GAP;
-  const accountRowY = LEVEL_GAP;
+  const companyColWidth = CARD_W.company + H_GAP;
+  const accountRowY = CARD_H.gp + V_GAP;
 
   for (const org of orgs) {
     const accounts = getAccountsToShow(org, focusAccountId);
     const orgId = `org-${org.id}`;
     const numAccounts = accounts.length;
-    const centerX = numAccounts > 0 ? ((numAccounts - 1) * colWidth) / 2 : 0;
+    const totalW = numAccounts * CARD_W.company + (numAccounts - 1) * H_GAP;
+    const centerX = numAccounts > 0 ? (CARD_W.gp / 2 - totalW / 2) : 0;
 
     addNode({
       id: orgId,
       type: "org",
-      position: { x: centerX, y: 0 },
+      position: { x: 0, y: 0 },
       data: { label: org.name, type: "org" },
       sourcePosition: Position.Bottom,
       targetPosition: Position.Top,
@@ -253,7 +230,7 @@ function buildOrgChartData(orgs: Org[], focusAccountId: string | undefined) {
     for (let i = 0; i < accounts.length; i++) {
       const account = accounts[i];
       const accId = `acc-${account.id}`;
-      const accX = i * colWidth;
+      const accX = centerX + i * companyColWidth;
       const isFocus = hasFocus && account.id === focusAccountId;
       const isSubtle = hasFocus && account.id !== focusAccountId;
 
@@ -283,34 +260,11 @@ function buildOrgChartData(orgs: Org[], focusAccountId: string | undefined) {
               source: accId,
               target: targetAccId,
               type: "smoothstep",
-              style: { stroke: "#cbd5e1", strokeWidth: 1, strokeDasharray: "6 4" },
+              style: { stroke: "#c7c7c7", strokeWidth: 1.5, strokeDasharray: "4 3" },
               zIndex: -1,
             });
           }
         }
-      }
-
-      let contactY = accountRowY + NODE_HEIGHT_ACCOUNT + ROW_GAP;
-      const seenContactIds = new Set<string>();
-      for (const contact of account.contacts) {
-        if (seenContactIds.has(contact.id)) continue;
-        seenContactIds.add(contact.id);
-        const conId = `con-${account.id}-${contact.id}`;
-        addNode({
-          id: conId,
-          type: "contact",
-          position: { x: accX, y: contactY },
-          data: {
-            label: contact.name,
-            role: contact.role,
-            type: "contact",
-            href: `/crm/customer/contacts?contact=${contact.id}`,
-          },
-          sourcePosition: Position.Bottom,
-          targetPosition: Position.Top,
-        });
-        addEdge({ id: `e-${accId}-${conId}`, source: accId, target: conId });
-        contactY += NODE_HEIGHT_CONTACT + ROW_GAP;
       }
     }
   }
@@ -334,10 +288,267 @@ export default function OrgChartFlow({
   orgs: Org[];
   focusAccountId?: string;
 }) {
+  const [selectedAccountId, setSelectedAccountId] = React.useState<string | null>(null);
+
+  const isOrgOnlyView = orgs.length === 1 && !focusAccountId;
+  const orgOnly = isOrgOnlyView ? orgs[0]! : null;
+  const orgOnlyAccounts = orgOnly ? getAccountsByOrgId(orgOnly.id) : [];
+
   const { nodes, edges } = useMemo(
     () => buildOrgChartData(orgs, focusAccountId),
     [orgs, focusAccountId]
   );
+
+  const defaultEdgeOptions = useMemo(
+    () => ({
+      type: "smoothstep" as const,
+      style: { stroke: "#c7c7c7", strokeWidth: 1.5 },
+      zIndex: 0,
+    }),
+    []
+  );
+
+  const accountsWithContacts = useMemo(() => {
+    const list: { account: { id: string; name: string; accountNumber?: string }; contacts: { id: string; name: string; role?: string }[] }[] = [];
+    for (const org of orgs) {
+      const accounts = getAccountsToShow(org, focusAccountId);
+      for (const account of accounts) {
+        const seen = new Set<string>();
+        const contacts = account.contacts.filter((c) => {
+          if (seen.has(c.id)) return false;
+          seen.add(c.id);
+          return true;
+        });
+        if (contacts.length > 0) {
+          list.push({
+            account: { id: account.id, name: account.name, accountNumber: account.accountNumber },
+            contacts: contacts.map((c) => ({ id: c.id, name: c.name, role: c.role })),
+          });
+        }
+      }
+    }
+    return list;
+  }, [orgs, focusAccountId]);
+
+  if (isOrgOnlyView && orgOnly) {
+    const selectedAccount = selectedAccountId ? orgOnlyAccounts.find((a) => a.id === selectedAccountId) : null;
+    const selectedContacts = selectedAccount
+      ? [...new Map(selectedAccount.contacts.map((c) => [c.id, c])).values()]
+      : [];
+    const accountCases = selectedAccount ? getCasesByAccountId(selectedAccount.id) : [];
+
+    return (
+      <div className="mx-auto flex w-full max-w-[1400px] min-w-0 flex-col gap-0">
+        <div className="rounded-t-lg border border-[#e0e0e0] bg-[#f5f5f5] p-6 dark:border-gray-700 dark:bg-gray-900/50">
+          <div
+            style={{
+              ...BASE_CARD,
+              width: "100%",
+              maxWidth: CARD_W.gp,
+              height: CARD_H.gp,
+              borderLeft: "3px solid #6264a7",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1), 0 0 0 1px rgba(98,100,167,0.15)",
+              marginBottom: 24,
+            }}
+          >
+            <div
+              style={{
+                width: 46,
+                height: 46,
+                borderRadius: 8,
+                background: "#ede9fe",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Icon name="apartment" size={22} className="text-[#5b21b6]" />
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#252423", lineHeight: 1.3 }}>{orgOnly.name}</div>
+              <div style={{ fontSize: 11, color: "#8a8886", marginTop: 2 }}>
+                {orgOnlyAccounts.length} account{orgOnlyAccounts.length !== 1 ? "s" : ""} in this organisation
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {orgOnlyAccounts.map((account) => {
+              const isSelected = selectedAccountId === account.id;
+              return (
+                <button
+                  key={account.id}
+                  type="button"
+                  onClick={() => setSelectedAccountId(isSelected ? null : account.id)}
+                  className="text-left"
+                  style={{
+                    ...BASE_CARD,
+                    width: "100%",
+                    minHeight: CARD_H.company,
+                    borderLeft: `3px solid ${isSelected ? "#6264a7" : "#c7c7c7"}`,
+                    boxShadow: isSelected
+                      ? "0 0 0 2px #dce0f5, 0 2px 8px rgba(98,100,167,0.15)"
+                      : "0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      background: getAvatarHex(account.name, 0),
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      flexShrink: 0,
+                      letterSpacing: "0.3px",
+                    }}
+                  >
+                    {getInitials(account.name)}
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#252423",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {account.name}
+                    </div>
+                    {account.accountNumber && (
+                      <div style={{ fontSize: 11, color: "#8a8886", marginTop: 2 }}>{account.accountNumber}</div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {selectedAccount && (
+          <div className="rounded-b-lg border border-t-0 border-[#e0e0e0] bg-white p-5 dark:border-gray-700 dark:bg-gray-900/30">
+            {accountCases.length > 0 && (
+              <div className="mb-6">
+                <div className="mb-3 text-[12px] font-normal text-[#616161] dark:text-gray-400">
+                  Cases at {selectedAccount.name} ({accountCases.length})
+                </div>
+                <div className="space-y-4">
+                  {accountCases.map((caseItem) => (
+                    <div
+                      key={caseItem.id}
+                      className="rounded-lg border border-[#e0e0e0] bg-[#fafafa] p-4 dark:border-gray-600 dark:bg-gray-800/40"
+                    >
+                      <Link
+                        href={`/crm/cases/${caseItem.id}`}
+                        className="mb-3 flex items-center gap-2 font-semibold text-[#252423] hover:text-[#6264a7] dark:text-gray-100 dark:hover:text-violet-400"
+                        style={{ fontSize: 13 }}
+                      >
+                        {caseItem.caseNumber}
+                        <span className="font-normal text-[#616161] dark:text-gray-400">
+                          · {caseItem.type} · {caseItem.subType} · {caseItem.status}
+                        </span>
+                      </Link>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[#8a8886] dark:text-gray-500">
+                            Contacts
+                          </div>
+                          {selectedContacts.length === 0 ? (
+                            <p className="text-[12px] text-[#616161] dark:text-gray-400">No contacts</p>
+                          ) : (
+                            <div className="flex flex-wrap gap-2">
+                              {selectedContacts.slice(0, 5).map((contact) => (
+                                <Link
+                                  key={contact.id}
+                                  href={`/crm/customer/contacts?contact=${contact.id}`}
+                                  className="flex items-center gap-1.5 rounded-md border border-[#e0e0e0] bg-white px-2 py-1.5 text-[12px] transition-colors hover:bg-[#f3f2f1] dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700/50"
+                                >
+                                  <div
+                                    className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                                    style={{ background: getAvatarHex(contact.name, 1) }}
+                                  >
+                                    {getInitials(contact.name)}
+                                  </div>
+                                  <span className="font-medium text-[#252423] dark:text-gray-100">{contact.name}</span>
+                                  {contact.role && (
+                                    <span className="text-[11px] text-[#616161] dark:text-gray-400">· {contact.role}</span>
+                                  )}
+                                </Link>
+                              ))}
+                              {selectedContacts.length > 5 && (
+                                <span className="text-[11px] text-[#616161] dark:text-gray-400">
+                                  +{selectedContacts.length - 5} more
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[#8a8886] dark:text-gray-500">
+                            Assigned
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-md border border-[#e0e0e0] bg-white px-2 py-1.5 text-[12px] dark:border-gray-600 dark:bg-gray-800"
+                              style={{ borderLeft: "3px solid #0d9488" }}
+                            >
+                              <span className="font-medium text-[#252423] dark:text-gray-100">{caseItem.owner}</span>
+                              <span className="text-[11px] text-[#616161] dark:text-gray-400">· {caseItem.team}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mb-3 text-[12px] font-normal text-[#616161] dark:text-gray-400">
+              People at {selectedAccount.name} ({selectedContacts.length})
+            </div>
+            {selectedContacts.length === 0 ? (
+              <p className="text-[12px] text-[#616161] dark:text-gray-400">No contacts for this account.</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-x-2 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+                {selectedContacts.map((contact) => (
+                  <Link
+                    key={contact.id}
+                    href={`/crm/customer/contacts?contact=${contact.id}`}
+                    className="flex items-center gap-2.5 rounded-md py-1.5 pr-2 transition-colors hover:bg-[#f3f2f1] dark:hover:bg-gray-700/50"
+                  >
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-white"
+                      style={{ background: getAvatarHex(contact.name, 1) }}
+                    >
+                      {getInitials(contact.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-semibold text-[#252423] dark:text-gray-100">
+                        {contact.name}
+                      </div>
+                      {contact.role && (
+                        <div className="truncate text-[11px] text-[#616161] dark:text-gray-400">{contact.role}</div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (nodes.length === 0) {
     return (
@@ -351,35 +562,76 @@ export default function OrgChartFlow({
     );
   }
 
-  const defaultEdgeOptions = useMemo(
-    () => ({
-      type: "smoothstep" as const,
-      style: { stroke: "#64748b", strokeWidth: 2 },
-      zIndex: 0,
-    }),
-    []
-  );
-
   return (
-    <div className="h-[600px] w-full rounded-lg border border-border bg-gray-50/50 dark:bg-gray-800/30">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        defaultEdgeOptions={defaultEdgeOptions}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.2}
-        maxZoom={1.5}
-        nodesDraggable={true}
-        nodesConnectable={false}
-        elementsSelectable={true}
-        proOptions={{ hideAttribution: true }}
-        className="rounded-lg"
+    <div className="mx-auto flex w-full max-w-[1400px] min-w-0 flex-col gap-0">
+      <div
+        className="w-full rounded-t-lg border border-b-0 border-[#e0e0e0] bg-[#f5f5f5] dark:border-gray-700 dark:bg-gray-900/50"
+        style={{ height: 320 }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={16} size={1} className="text-gray-200 dark:text-gray-700" />
-        <Controls className="rounded-md border border-border bg-white shadow dark:border-gray-600 dark:bg-gray-800" />
-      </ReactFlow>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          defaultEdgeOptions={defaultEdgeOptions}
+          fitView
+          fitViewOptions={{ padding: 0.15 }}
+          minZoom={1}
+          maxZoom={1}
+          panOnDrag={false}
+          zoomOnScroll={false}
+          zoomOnPinch={false}
+          zoomOnDoubleClick={false}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={true}
+          proOptions={{ hideAttribution: true }}
+          className="rounded-t-lg"
+        >
+          <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#d4d4d4" />
+        </ReactFlow>
+      </div>
+      <div className="flex flex-col gap-4 rounded-b-lg border border-[#e0e0e0] bg-white p-5 dark:border-gray-700 dark:bg-gray-900/30">
+        {accountsWithContacts.length === 0 ? (
+          <p className="text-[12px] text-[#616161] dark:text-gray-400">No contacts to display.</p>
+        ) : (
+          accountsWithContacts.map(({ account, contacts }) => (
+            <div
+              key={account.id}
+              className="rounded-lg border border-[#e0e0e0] bg-white p-4 dark:border-gray-600 dark:bg-gray-800/50"
+            >
+              <div className="mb-3 text-[12px] font-normal text-[#616161] dark:text-gray-400">
+                People at {account.name} ({contacts.length})
+              </div>
+              <div className="grid grid-cols-1 gap-x-2 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+                {contacts.map((contact) => (
+                  <Link
+                    key={contact.id}
+                    href={`/crm/customer/contacts?contact=${contact.id}`}
+                    className="flex items-center gap-2.5 rounded-md py-1.5 pr-2 transition-colors hover:bg-[#f3f2f1] dark:hover:bg-gray-700/50"
+                  >
+                    <div
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-white"
+                      style={{ background: getAvatarHex(contact.name, 1) }}
+                    >
+                      {getInitials(contact.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-semibold text-[#252423] dark:text-gray-100">
+                        {contact.name}
+                      </div>
+                      {contact.role && (
+                        <div className="truncate text-[11px] text-[#616161] dark:text-gray-400">
+                          {contact.role}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

@@ -921,3 +921,7 @@ export function getCaseByCaseNumber(caseNumber: string): CaseItem | undefined {
 export function getCasesBySLA(status: string): CaseItem[] {
   return mockCases.filter((c) => c.slaStatus === status);
 }
+
+export function getCasesByAccountId(accountId: string): CaseItem[] {
+  return mockCases.filter((c) => c.accountId === accountId);
+}
