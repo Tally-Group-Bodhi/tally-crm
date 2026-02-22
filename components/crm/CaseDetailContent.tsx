@@ -33,8 +33,24 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/Popover/Popover";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetClose,
+} from "@/components/Sheet/Sheet";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/Table/Table";
 import { getCaseByCaseNumber } from "@/lib/mock-data/cases";
-import { getAccountById } from "@/lib/mock-data/accounts";
+import { getAccountById, getOrgById, getAccountsByOrgId } from "@/lib/mock-data/accounts";
 import type { Account, CaseItem, CasePriority, CaseStatus, Communication, Contact } from "@/types/crm";
 
 const priorityVariant: Record<CasePriority, "error" | "warning" | "info" | "outline" | "yellow"> = {
@@ -43,6 +59,26 @@ const priorityVariant: Record<CasePriority, "error" | "warning" | "info" | "outl
   Medium: "yellow",
   Low: "outline",
 };
+
+function RelatedCaseStatusBadge({ status }: { status: CaseStatus }) {
+  const config: Record<
+    string,
+    { variant: "default" | "info" | "warning" | "success" | "outline"; dot?: string }
+  > = {
+    New: { variant: "outline", dot: "bg-blue-500" },
+    "In Progress": { variant: "info" },
+    Pending: { variant: "warning" },
+    Resolved: { variant: "success" },
+    Closed: { variant: "default" },
+  };
+  const c = config[status] ?? config["New"];
+  return (
+    <Badge variant={c.variant} className="gap-1">
+      {c.dot && <span className={cn("inline-block h-1.5 w-1.5 rounded-full", c.dot)} />}
+      {status}
+    </Badge>
+  );
+}
 
 const STATUS_ICONS: Record<CaseStatus, string> = {
   New: "add_circle",
@@ -152,6 +188,15 @@ export default function CaseDetailContent({
   const [communicationsFilterTab, setCommunicationsFilterTab] = React.useState<CommFilterTab>("all");
   const [closeCaseModalOpen, setCloseCaseModalOpen] = React.useState(false);
   const [pendingStatusChange, setPendingStatusChange] = React.useState<CaseStatus | null>(null);
+  const [selectedContact, setSelectedContact] = React.useState<Contact | null>(null);
+  const [expandedContactId, setExpandedContactId] = React.useState<string | null>(null);
+  const [contactsEditMode, setContactsEditMode] = React.useState(false);
+  const [localContacts, setLocalContacts] = React.useState<Contact[]>(() => account.contacts);
+  const [addContactOpen, setAddContactOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setLocalContacts(account.contacts);
+  }, [account.contacts, account.id]);
 
   const COMM_UNASSIGNED_LABEL = "—";
   const communicationsUniqueUsers = React.useMemo(() => {
@@ -719,46 +764,257 @@ export default function CaseDetailContent({
               <DocumentAttachments attachments={caseItem.attachments} />
             </div>
             <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-              <h3
-                className="mb-3 font-medium text-gray-900 dark:text-gray-100"
-                style={{ fontSize: "var(--tally-font-size-sm)" }}
-              >
-                Contacts ({account.contacts.length})
-              </h3>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3
+                  className="font-medium text-gray-900 dark:text-gray-100"
+                  style={{ fontSize: "var(--tally-font-size-sm)" }}
+                >
+                  Contacts ({localContacts.length})
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setContactsEditMode((prev) => !prev)}
+                    className="underline text-muted-foreground hover:text-gray-900 dark:hover:text-gray-100"
+                    style={{ fontSize: "var(--tally-font-size-xs)" }}
+                    title={contactsEditMode ? "Done editing" : "Edit contacts"}
+                  >
+                    {contactsEditMode ? "Cancel" : "Edit"}
+                  </button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    style={{ fontSize: "var(--tally-font-size-xs)" }}
+                    onClick={() => setAddContactOpen(true)}
+                  >
+                    <Icon name="add" size={14} />
+                    Add
+                  </Button>
+                </div>
+              </div>
               <div className="divide-y divide-border dark:divide-gray-700">
-                {account.contacts.map((contact: Contact) => (
-                  <div key={contact.id} className="flex items-center gap-3 py-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                      <Icon name="person" size={16} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p
-                          className="font-medium text-gray-900 dark:text-gray-100"
+                {localContacts.map((contact: Contact) => {
+                  const isExpanded = expandedContactId === contact.id;
+                  const initials = contact.name
+                    .split(/\s+/)
+                    .map((s) => s[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2);
+                  const org = getOrgById(account.orgId);
+                  const actionItems: { icon: string; label: string }[] = [
+                    { icon: "mail", label: "Email" },
+                    { icon: "call", label: "Call" },
+                    { icon: "task_alt", label: "Task" },
+                    { icon: "event", label: "Meeting" },
+                  ];
+                  const detailRows: { label: string; value: React.ReactNode }[] = [
+                    {
+                      label: "ORG",
+                      value: org ? (
+                        <Link
+                          href={`/crm/customer/orgs/${account.orgId}`}
+                          className="text-[#2C365D] underline hover:no-underline dark:text-blue-400"
                           style={{ fontSize: "var(--tally-font-size-sm)" }}
                         >
-                          {contact.name}
-                        </p>
-                        {contact.isPrimary && (
-                          <Badge
-                            variant="default"
-                            className="px-1.5 py-0"
+                          {org.name}
+                        </Link>
+                      ) : "—",
+                    },
+                    { label: "ROLE", value: contact.role || "—" },
+                    { label: "EMAIL", value: contact.email || "—" },
+                    { label: "PHONE NUMBER", value: contact.phone || "—" },
+                    { label: "PREFERRED CHANNELS", value: contact.preferredChannels ?? "—" },
+                    { label: "CREATE DATE", value: contact.createDate ?? "—" },
+                  ];
+                  return (
+                    <div key={contact.id} className="py-2.5 first:pt-0">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedContactId(isExpanded ? null : contact.id)}
+                          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                        >
+                          <div
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2C365D] text-xs font-medium text-white dark:bg-[#3d4a6e]"
                             style={{ fontSize: "var(--tally-font-size-xs)" }}
                           >
-                            Primary
-                          </Badge>
+                            {initials}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p
+                                className="font-medium text-gray-900 dark:text-gray-100"
+                                style={{ fontSize: "var(--tally-font-size-sm)" }}
+                              >
+                                {contact.name}
+                              </p>
+                              {contact.isPrimary && (
+                                <Badge
+                                  variant="default"
+                                  className="px-1.5 py-0"
+                                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                >
+                                  Primary
+                                </Badge>
+                              )}
+                            </div>
+                            <p
+                              className="text-muted-foreground"
+                              style={{ fontSize: "var(--tally-font-size-xs)" }}
+                            >
+                              {contact.role} · {contact.email}
+                            </p>
+                          </div>
+                          <Icon
+                            name={isExpanded ? "expand_less" : "expand_more"}
+                            size={20}
+                            className="shrink-0 text-muted-foreground"
+                          />
+                        </button>
+                        {contactsEditMode && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocalContacts((prev) => prev.filter((c) => c.id !== contact.id));
+                              if (expandedContactId === contact.id) setExpandedContactId(null);
+                            }}
+                            className="shrink-0 underline text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                            style={{ fontSize: "var(--tally-font-size-xs)" }}
+                            title="Remove contact"
+                          >
+                            Remove
+                          </button>
                         )}
                       </div>
-                      <p
-                        className="text-muted-foreground"
-                        style={{ fontSize: "var(--tally-font-size-xs)" }}
-                      >
-                        {contact.role} · {contact.email}
-                      </p>
+                      {isExpanded && (
+                        <div
+                          className="mt-3 rounded-lg border border-border bg-gray-50/80 dark:border-gray-700 dark:bg-gray-800/50"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* Actions left, Edit right */}
+                          <div className="flex flex-row flex-wrap items-center justify-between gap-2 border-b border-border px-density-md py-density-sm dark:border-gray-700">
+                            <div className="flex flex-row items-center gap-1">
+                              {actionItems.map(({ icon, label }) => (
+                                <button
+                                  key={label}
+                                  type="button"
+                                  className="flex flex-col items-center gap-0.5 rounded-density-md py-1 text-muted-foreground transition-colors hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+                                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                >
+                                  <Icon name={icon} size={18} />
+                                  <span>{label}</span>
+                                </button>
+                              ))}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5 border-[#2C365D]/40 text-[#2C365D] hover:bg-[#2C365D]/5 dark:border-blue-400/50 dark:text-blue-400 dark:hover:bg-blue-400/10"
+                              style={{ fontSize: "var(--tally-font-size-xs)" }}
+                            >
+                              <Icon name="edit" size={12} />
+                              Edit
+                            </Button>
+                          </div>
+                          {/* Detail rows */}
+                          <div>
+                            {detailRows.map(({ label, value }) => (
+                              <div
+                                key={label}
+                                className="flex flex-col gap-0.5 border-b border-border px-density-md py-density-sm last:border-b-0 dark:border-gray-700"
+                                style={{ fontSize: "var(--tally-font-size-xs)" }}
+                              >
+                                <span
+                                  className="font-semibold uppercase tracking-wider text-muted-foreground"
+                                  style={{ fontSize: "10px", letterSpacing: "0.08em" }}
+                                >
+                                  {label}
+                                </span>
+                                <span className="text-gray-900 dark:text-gray-100">{value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+
+              {/* Add contact dialog */}
+              <Dialog open={addContactOpen} onOpenChange={setAddContactOpen}>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle style={{ fontSize: "var(--tally-font-size-base)" }}>
+                      Add contact
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="max-h-[60vh] overflow-y-auto">
+                    {(() => {
+                      const localIds = new Set(localContacts.map((c) => c.id));
+                      const orgAccounts = getAccountsByOrgId(account.orgId);
+                      const withDedup = new Map<string, Contact>();
+                      orgAccounts.forEach((acc) =>
+                        acc.contacts.forEach((c) => {
+                          if (!localIds.has(c.id)) withDedup.set(c.id, c);
+                        })
+                      );
+                      const available = Array.from(withDedup.values());
+                      if (available.length === 0) {
+                        return (
+                          <p
+                            className="py-4 text-center text-muted-foreground"
+                            style={{ fontSize: "var(--tally-font-size-sm)" }}
+                          >
+                            No other contacts in this organisation to add.
+                          </p>
+                        );
+                      }
+                      return (
+                        <ul className="divide-y divide-border dark:divide-gray-700">
+                          {available.map((c) => (
+                            <li key={c.id}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLocalContacts((prev) => [...prev, c]);
+                                  setAddContactOpen(false);
+                                }}
+                                className="flex w-full items-center gap-3 px-2 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                style={{ fontSize: "var(--tally-font-size-sm)" }}
+                              >
+                                <div
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2C365D] text-xs font-medium text-white dark:bg-[#3d4a6e]"
+                                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                >
+                                  {c.name
+                                    .split(/\s+/)
+                                    .map((s) => s[0])
+                                    .join("")
+                                    .toUpperCase()
+                                    .slice(0, 2)}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium text-gray-900 dark:text-gray-100">
+                                    {c.name}
+                                  </p>
+                                  <p className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                    {c.role} · {c.email}
+                                  </p>
+                                </div>
+                                <Icon name="add" size={18} className="shrink-0 text-muted-foreground" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      );
+                    })()}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             <div className="rounded-lg border border-border bg-white p-4 lg:col-span-2 dark:border-gray-700 dark:bg-gray-900">
               <div className="mb-3 flex items-center justify-between gap-2">
@@ -788,26 +1044,83 @@ export default function CaseDetailContent({
                   return c != null && getAccountById(c.accountId)?.orgId === account.orgId;
                 });
                 return relatedSameOrg.length > 0 ? (
-                  <div className="space-y-2">
-                    {relatedSameOrg.map((caseNum) => {
-                      const linkedCase = resolveCase(caseNum);
-                      if (!linkedCase) return null;
-                      return (
-                        <Link
-                          key={linkedCase.id}
-                          href={`/crm/cases/${linkedCase.id}`}
-                          className="flex items-center gap-2 rounded border border-border px-3 py-2 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/60"
-                        >
-                          <Icon name="link" size={16} className="text-gray-400" />
-                          <span
-                            className="font-medium text-[#2C365D] dark:text-[#7c8cb8]"
-                            style={{ fontSize: "var(--tally-font-size-sm)" }}
-                          >
-                            {linkedCase.caseNumber}
-                          </span>
-                        </Link>
-                      );
-                    })}
+                  <div className="overflow-hidden rounded-density-md border border-border dark:border-gray-700">
+                    <Table dense>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Case #</TableHead>
+                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Account</TableHead>
+                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Type</TableHead>
+                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
+                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Priority</TableHead>
+                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>SLA</TableHead>
+                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Owner</TableHead>
+                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Created</TableHead>
+                          <TableHead className="w-10" style={{ fontSize: "var(--tally-font-size-xs)" }} aria-label="Open in new window">
+                            <span className="sr-only">Open in new window</span>
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {relatedSameOrg.map((caseNum) => {
+                          const linkedCase = resolveCase(caseNum);
+                          if (!linkedCase) return null;
+                          return (
+                            <TableRow key={linkedCase.id} className="group">
+                              <TableCell>
+                                <Link
+                                  href={`/crm/cases/${linkedCase.id}`}
+                                  className="font-medium text-[#2C365D] hover:underline dark:text-[#7c8cb8]"
+                                  style={{ fontSize: "var(--tally-font-size-sm)" }}
+                                >
+                                  {linkedCase.caseNumber}
+                                </Link>
+                              </TableCell>
+                              <TableCell className="max-w-[200px] truncate text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                {linkedCase.accountName}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                  {linkedCase.type}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <RelatedCaseStatusBadge status={linkedCase.status} />
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={priorityVariant[linkedCase.priority]} style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                  {linkedCase.priority}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <SLAIndicator
+                                  status={linkedCase.slaStatus}
+                                  timeRemaining={linkedCase.slaTimeRemaining}
+                                />
+                              </TableCell>
+                              <TableCell className="text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                {linkedCase.owner}
+                              </TableCell>
+                              <TableCell className="text-gray-500 dark:text-gray-400" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                {linkedCase.createdDate}
+                              </TableCell>
+                              <TableCell className="w-10">
+                                <Link
+                                  href={`/crm/cases/${linkedCase.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
+                                  title="Open in new window"
+                                  aria-label={`Open ${linkedCase.caseNumber} in new window`}
+                                >
+                                  <Icon name="open_in_new" size={18} />
+                                </Link>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
                 ) : (
                   <p
@@ -944,6 +1257,125 @@ export default function CaseDetailContent({
         }
         portalContainer={portalContainerRef?.current}
       />
+
+      {/* Contact detail sheet (Related tab) */}
+      <Sheet open={!!selectedContact} onOpenChange={(open) => !open && setSelectedContact(null)}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-white p-0 dark:border-gray-700 dark:bg-gray-900 sm:!max-w-[600px]"
+          style={{ maxWidth: "min(600px, 100vw)" }}
+        >
+          {selectedContact && (() => {
+            const initials = selectedContact.name
+              .split(/\s+/)
+              .map((s) => s[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2);
+            const org = getOrgById(account.orgId);
+            const actionItems: { icon: string; label: string }[] = [
+              { icon: "edit_note", label: "Note" },
+              { icon: "mail", label: "Email" },
+              { icon: "call", label: "Call" },
+              { icon: "task_alt", label: "Task" },
+              { icon: "event", label: "Meeting" },
+            ];
+            const detailRows: { label: string; value: React.ReactNode }[] = [
+              {
+                label: "ORG",
+                value: org ? (
+                  <Link
+                    href={`/crm/customer/orgs/${account.orgId}`}
+                    className="text-[#2C365D] underline hover:no-underline dark:text-blue-400"
+                    style={{ fontSize: "var(--tally-font-size-sm)" }}
+                  >
+                    {org.name}
+                  </Link>
+                ) : "—",
+              },
+              { label: "ROLE", value: selectedContact.role || "—" },
+              { label: "EMAIL", value: selectedContact.email || "—" },
+              { label: "PHONE NUMBER", value: selectedContact.phone || "—" },
+              { label: "PREFERRED CHANNELS", value: selectedContact.preferredChannels ?? "—" },
+              { label: "CREATE DATE", value: selectedContact.createDate ?? "—" },
+            ];
+            return (
+              <>
+                {/* Header: avatar, name, email, Edit + close */}
+                <SheetHeader className="flex flex-row items-start justify-between gap-density-md border-b border-border px-density-lg py-density-md dark:border-gray-700">
+                  <div className="flex min-w-0 flex-1 gap-density-md">
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2C365D] text-sm font-medium text-white dark:bg-[#3d4a6e]"
+                      style={{ fontSize: "var(--tally-font-size-sm)" }}
+                    >
+                      {initials}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <SheetTitle
+                        className="font-bold text-gray-900 dark:text-gray-100"
+                        style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}
+                      >
+                        {selectedContact.name}
+                      </SheetTitle>
+                      <SheetDescription
+                        className="mt-density-xs break-words text-muted-foreground"
+                        style={{ fontSize: "var(--tally-font-size-sm)", lineHeight: "var(--tally-line-height-normal)" }}
+                      >
+                        {selectedContact.email}
+                      </SheetDescription>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-start gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 border-[#2C365D]/40 text-[#2C365D] hover:bg-[#2C365D]/5 dark:border-blue-400/50 dark:text-blue-400 dark:hover:bg-blue-400/10"
+                    >
+                      <Icon name="edit" size={14} />
+                      Edit
+                    </Button>
+                    <SheetClose className="rounded-density-md p-density-sm hover:bg-gray-100 dark:hover:bg-gray-800" />
+                  </div>
+                </SheetHeader>
+
+                {/* Action buttons: Note, Email, Call, Task, Meeting */}
+                <div className="flex flex-row items-center justify-between gap-2 border-b border-border px-density-lg py-density-md dark:border-gray-700">
+                  {actionItems.map(({ icon, label }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      className="flex flex-col items-center gap-1 rounded-density-md py-1 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+                      style={{ fontSize: "var(--tally-font-size-xs)" }}
+                    >
+                      <Icon name={icon} size={22} />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Contact details: ORG, ROLE, EMAIL, etc. */}
+                <div className="flex-1 overflow-y-auto">
+                  {detailRows.map(({ label, value }) => (
+                    <div
+                      key={label}
+                      className="flex flex-col gap-0.5 border-b border-border px-density-lg py-density-md dark:border-gray-700"
+                      style={{ fontSize: "var(--tally-font-size-sm)" }}
+                    >
+                      <span
+                        className="font-semibold uppercase tracking-wider text-muted-foreground"
+                        style={{ fontSize: "var(--tally-font-size-xs)", letterSpacing: "0.08em" }}
+                      >
+                        {label}
+                      </span>
+                      <span className="text-gray-900 dark:text-gray-100">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
       </div>
     </div>
   );
