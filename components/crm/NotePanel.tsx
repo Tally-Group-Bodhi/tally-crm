@@ -52,6 +52,7 @@ export default function NotePanel({
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, offsetX: 0, offsetY: 0 });
+  const miniCardRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -309,7 +310,28 @@ export default function NotePanel({
         y: dragStartRef.current.offsetY + (e.clientY - dragStartRef.current.mouseY),
       });
     };
-    const onMouseUp = () => setDragging(false);
+    const onMouseUp = () => {
+      const el = miniCardRef.current;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const visibleLeft = Math.max(0, r.left);
+        const visibleTop = Math.max(0, r.top);
+        const visibleRight = Math.min(vw, r.right);
+        const visibleBottom = Math.min(vh, r.bottom);
+        const visibleWidth = Math.max(0, visibleRight - visibleLeft);
+        const visibleHeight = Math.max(0, visibleBottom - visibleTop);
+        const visibleArea = visibleWidth * visibleHeight;
+        const totalArea = r.width * r.height;
+        const moreThanHalfOutside =
+          totalArea > 0 && visibleArea < totalArea * 0.5;
+        if (moreThanHalfOutside) {
+          setDragOffset({ x: 0, y: 0 });
+        }
+      }
+      setDragging(false);
+    };
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     return () => {
@@ -483,7 +505,7 @@ export default function NotePanel({
           <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
             <h2
               id="note-panel-title"
-              className="text-base font-semibold text-gray-900 dark:text-gray-100"
+              className="leading-none text-base font-semibold text-gray-900 dark:text-gray-100"
               style={{ fontSize: "var(--tally-font-size-sm)" }}
             >
               Add note
@@ -527,6 +549,7 @@ export default function NotePanel({
   // Mini: draggable floating card
   const miniCard = (
     <div
+      ref={miniCardRef}
       role="dialog"
       aria-labelledby="note-panel-title"
       className={cn(
@@ -556,7 +579,7 @@ export default function NotePanel({
         </span>
         <h2
           id="note-panel-title"
-          className="flex-1 text-base font-semibold text-gray-900 dark:text-gray-100"
+          className="flex-1 leading-none text-base font-semibold text-gray-900 dark:text-gray-100"
           style={{ fontSize: "var(--tally-font-size-sm)" }}
         >
           Add note
@@ -576,7 +599,7 @@ export default function NotePanel({
           aria-label="Reset position"
           title="Reset position to default"
         >
-          <Icon name="south_east" size={18} />
+          <Icon name="pip" size={18} />
         </button>
         <button
           type="button"
