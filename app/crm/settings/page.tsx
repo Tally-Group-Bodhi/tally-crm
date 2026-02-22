@@ -28,6 +28,16 @@ import {
   TableHead,
   TableCell,
 } from "@/components/Table/Table";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/AlertDialog/AlertDialog";
 import { cn } from "@/lib/utils";
 
 const SETTINGS_TABS = [
@@ -172,6 +182,7 @@ export default function SettingsPage() {
   const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
   const [slaForm, setSlaForm] = useState(defaultSLAForm);
   const [slaToast, setSlaToast] = useState({ show: false, message: "" });
+  const [slaRuleToDelete, setSlaRuleToDelete] = useState<number | null>(null);
 
   const showSlaToast = (message: string) => {
     setSlaToast({ show: true, message });
@@ -678,13 +689,24 @@ export default function SettingsPage() {
                                     <Icon name="lock" size="var(--tally-icon-size-sm)" className="ml-density-sm inline-block text-violet-500 dark:text-violet-400" />
                                   )}
                                 </div>
-                                <div className="font-mono text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                <div className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
                                   {r.reason !== "All" ? r.reason : "All contact reasons"}
                                 </div>
                               </TableCell>
                               <TableCell className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>{r.caseType}</TableCell>
-                              <TableCell className="font-mono text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-xs)" }}>{r.duration}</TableCell>
-                              <TableCell className="font-mono text-amber-600 dark:text-amber-400" style={{ fontSize: "var(--tally-font-size-xs)" }}>{r.warning}</TableCell>
+                              <TableCell className="text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-xs)" }}>{r.duration}</TableCell>
+                              <TableCell className="align-top">
+                                <div className="space-y-1">
+                                  <span className="text-amber-600 dark:text-amber-400" style={{ fontSize: "var(--tally-font-size-xs)" }}>{r.warning}</span>
+                                  <div className="relative h-1 w-16 min-w-16 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                    <div className="h-full w-full rounded-full bg-gradient-to-r from-green-500 via-amber-500 to-red-500" />
+                                    <div
+                                      className="absolute top-1/2 -translate-y-1/2 rounded-full bg-black shadow-sm dark:bg-white"
+                                      style={{ left: `${parseInt(r.warning, 10) || 0}%`, marginLeft: -1.5, height: "6px", width: "3px" }}
+                                    />
+                                  </div>
+                                </div>
+                              </TableCell>
                               <TableCell>
                                 <Badge variant={r.type === "regulatory" ? "default" : "outline"} className={r.type === "internal" ? "text-muted-foreground" : undefined}>
                                   {r.type === "regulatory" ? "⬡ Regulatory" : "Internal"}
@@ -704,7 +726,7 @@ export default function SettingsPage() {
                                     <Icon name="content_copy" size="var(--tally-icon-size-sm)" />
                                   </Button>
                                   {r.type !== "regulatory" && (
-                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-[#C40000]/10 hover:text-[#C40000]" onClick={() => deleteSlaRule(r.id)} title="Delete">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-[#C40000]/10 hover:text-[#C40000]" onClick={() => setSlaRuleToDelete(r.id)} title="Delete">
                                       <Icon name="delete" size="var(--tally-icon-size-sm)" />
                                     </Button>
                                   )}
@@ -740,6 +762,32 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Confirm delete SLA rule */}
+      <AlertDialog open={slaRuleToDelete !== null} onOpenChange={(open) => !open && setSlaRuleToDelete(null)}>
+        <AlertDialogContent className="dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-gray-100">Delete SLA rule</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
+              Are you sure you want to delete the rule &quot;{slaRuleToDelete != null ? slaRules.find((rule) => rule.id === slaRuleToDelete)?.name : ""}&quot;? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="hover:bg-[#C40000]/90 bg-[#C40000] text-white focus-visible:ring-[#C40000] dark:hover:bg-[#C40000]/80"
+              onClick={() => {
+                if (slaRuleToDelete != null) {
+                  deleteSlaRule(slaRuleToDelete);
+                  setSlaRuleToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* SLA Rule slide-over panel */}
       <Sheet open={slaSheetOpen} onOpenChange={setSlaSheetOpen}>
@@ -864,7 +912,7 @@ export default function SettingsPage() {
                       style={{ left: `${slaForm.warningThreshold}%`, marginLeft: -1, height: "var(--tally-spacing-md)", width: "2px" }}
                     />
                   </div>
-                  <div className="mt-density-xs flex justify-between font-mono" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                  <div className="mt-density-xs flex justify-between" style={{ fontSize: "var(--tally-font-size-xs)" }}>
                     <span className="text-green-600 dark:text-green-400">0%</span>
                     <span className="text-amber-600 dark:text-amber-400">{slaForm.warningThreshold}% warn</span>
                     <span className="text-red-600 dark:text-red-400">100% breach</span>
@@ -921,6 +969,19 @@ export default function SettingsPage() {
                     <option value="pct">% elapsed</option></Select>
                   </div>
                 </div>
+              </div>
+              <p className="mt-density-md text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Cases will be escalated when this percentage of the SLA duration has elapsed.</p>
+              <div className="relative mt-density-sm h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700" style={{ height: "var(--tally-spacing-sm)" }}>
+                <div className="h-full w-full rounded-full bg-gradient-to-r from-green-500 via-amber-500 to-red-500" />
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 rounded-full bg-white shadow-sm"
+                  style={{ left: `${slaForm.escalateAt}%`, marginLeft: -1, height: "var(--tally-spacing-md)", width: "2px" }}
+                />
+              </div>
+              <div className="mt-density-xs flex justify-between" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                <span className="text-green-600 dark:text-green-400">0%</span>
+                <span className="text-amber-600 dark:text-amber-400">{slaForm.escalateAt}% escalate</span>
+                <span className="text-red-600 dark:text-red-400">100% breach</span>
               </div>
             </div>
 
