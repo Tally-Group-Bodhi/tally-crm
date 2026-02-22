@@ -28,10 +28,20 @@ export default function DocumentAttachments({
         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
           Files ({attachments.length})
         </p>
-        <Button variant="outline" size="sm" className="gap-1.5">
-          <Icon name="upload" size={16} />
-          Upload
-        </Button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="underline text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
+            style={{ fontSize: "var(--tally-font-size-xs)" }}
+            title="Edit attachments"
+          >
+            Edit
+          </button>
+          <Button variant="outline" size="sm" className="gap-1.5">
+            <Icon name="upload" size={16} />
+            Upload
+          </Button>
+        </div>
       </div>
 
       {attachments.length === 0 ? (

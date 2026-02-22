@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs/Tabs";
 import Badge from "@/components/Badge/Badge";
 import Button from "@/components/Button/Button";
+import Input from "@/components/Input/Input";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import SLAIndicator from "@/components/crm/SLAIndicator";
@@ -193,10 +194,18 @@ export default function CaseDetailContent({
   const [contactsEditMode, setContactsEditMode] = React.useState(false);
   const [localContacts, setLocalContacts] = React.useState<Contact[]>(() => account.contacts);
   const [addContactOpen, setAddContactOpen] = React.useState(false);
+  const [editingContactId, setEditingContactId] = React.useState<string | null>(null);
+  const [contactEditDraft, setContactEditDraft] = React.useState<Contact | null>(null);
+  const [relatedCasesEditMode, setRelatedCasesEditMode] = React.useState(false);
+  const [localRelatedCaseNumbers, setLocalRelatedCaseNumbers] = React.useState<string[]>(() => relatedCaseNumbers);
 
   React.useEffect(() => {
     setLocalContacts(account.contacts);
   }, [account.contacts, account.id]);
+
+  React.useEffect(() => {
+    setLocalRelatedCaseNumbers(relatedCaseNumbers);
+  }, [relatedCaseNumbers, caseItem.id]);
 
   const COMM_UNASSIGNED_LABEL = "—";
   const communicationsUniqueUsers = React.useMemo(() => {
@@ -654,7 +663,7 @@ export default function CaseDetailContent({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <div className="relative w-44 min-w-0 md:w-52">
+              <div className="relative flex h-8 w-44 min-w-0 items-stretch md:w-52">
                 <Icon
                   name="search"
                   size={16}
@@ -666,10 +675,10 @@ export default function CaseDetailContent({
                   value={communicationsSearchQuery}
                   onChange={(e) => setCommunicationsSearchQuery(e.target.value)}
                   className={cn(
-                    "h-8 w-full rounded-md border border-border bg-white pl-8 pr-2.5 py-1.5 text-sm text-gray-900 placeholder:text-muted-foreground",
+                    "min-h-0 w-full rounded-md border border-border bg-white pl-8 pr-2.5 text-sm text-gray-900 placeholder:text-muted-foreground [line-height:1.25rem]",
                     "focus:outline-none focus:ring-2 focus:ring-[#2C365D] focus:ring-offset-1 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-400"
                   )}
-                  style={{ fontSize: "var(--tally-font-size-sm)" }}
+                  style={{ fontSize: "var(--tally-font-size-sm)", height: "2rem" }}
                   aria-label="Search communications"
                 />
               </div>
@@ -775,7 +784,7 @@ export default function CaseDetailContent({
                   <button
                     type="button"
                     onClick={() => setContactsEditMode((prev) => !prev)}
-                    className="underline text-muted-foreground hover:text-gray-900 dark:hover:text-gray-100"
+                    className="underline text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
                     style={{ fontSize: "var(--tally-font-size-xs)" }}
                     title={contactsEditMode ? "Done editing" : "Edit contacts"}
                   >
@@ -909,33 +918,130 @@ export default function CaseDetailContent({
                                 </button>
                               ))}
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1.5 border-[#2C365D]/40 text-[#2C365D] hover:bg-[#2C365D]/5 dark:border-blue-400/50 dark:text-blue-400 dark:hover:bg-blue-400/10"
-                              style={{ fontSize: "var(--tally-font-size-xs)" }}
-                            >
-                              <Icon name="edit" size={12} />
-                              Edit
-                            </Button>
-                          </div>
-                          {/* Detail rows */}
-                          <div>
-                            {detailRows.map(({ label, value }) => (
-                              <div
-                                key={label}
-                                className="flex flex-col gap-0.5 border-b border-border px-density-md py-density-sm last:border-b-0 dark:border-gray-700"
-                                style={{ fontSize: "var(--tally-font-size-xs)" }}
-                              >
-                                <span
-                                  className="font-semibold uppercase tracking-wider text-muted-foreground"
-                                  style={{ fontSize: "10px", letterSpacing: "0.08em" }}
+                            {editingContactId === contact.id ? (
+                              <div className="flex gap-1.5">
+                                <Button
+                                  size="sm"
+                                  className="gap-1 border-[#2C365D] bg-[#2C365D] text-white hover:bg-[#3d4a6e] dark:border-[#7c8cb8] dark:bg-[#7c8cb8] dark:hover:bg-[#8c9cc8]"
+                                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                  onClick={() => {
+                                    if (contactEditDraft) {
+                                      setLocalContacts((prev) =>
+                                        prev.map((c) => (c.id === editingContactId ? contactEditDraft : c))
+                                      );
+                                    }
+                                    setEditingContactId(null);
+                                    setContactEditDraft(null);
+                                  }}
                                 >
-                                  {label}
-                                </span>
-                                <span className="text-gray-900 dark:text-gray-100">{value}</span>
+                                  <Icon name="check" size={12} />
+                                  Save
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                  onClick={() => {
+                                    setEditingContactId(null);
+                                    setContactEditDraft(null);
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
                               </div>
-                            ))}
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5 border-[#2C365D]/40 text-[#2C365D] hover:bg-[#2C365D]/5 hover:text-[#2C365D] dark:border-blue-400/50 dark:text-blue-400 dark:hover:bg-blue-400/10 dark:hover:text-blue-400"
+                                style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                onClick={() => {
+                                  setEditingContactId(contact.id);
+                                  setContactEditDraft({ ...contact });
+                                }}
+                              >
+                                <Icon name="edit" size={12} className="shrink-0" />
+                                Edit
+                              </Button>
+                            )}
+                          </div>
+                          {/* Detail rows: editable when this contact is being edited */}
+                          <div>
+                            {editingContactId === contact.id && contactEditDraft ? (
+                              <>
+                                {/* ORG read-only */}
+                                <div
+                                  className="flex flex-col gap-0.5 border-b border-border px-density-md py-density-sm dark:border-gray-700"
+                                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                >
+                                  <span
+                                    className="font-semibold uppercase tracking-wider text-muted-foreground"
+                                    style={{ fontSize: "10px", letterSpacing: "0.08em" }}
+                                  >
+                                    ORG
+                                  </span>
+                                  <span className="text-gray-900 dark:text-gray-100">
+                                    {org ? (
+                                      <Link
+                                        href={`/crm/customer/orgs/${account.orgId}`}
+                                        className="text-[#2C365D] underline hover:no-underline dark:text-blue-400"
+                                        style={{ fontSize: "var(--tally-font-size-sm)" }}
+                                      >
+                                        {org.name}
+                                      </Link>
+                                    ) : "—"}
+                                  </span>
+                                </div>
+                                {/* Editable: Name, Role, Email, Phone, Preferred Channels, Create Date */}
+                                {[
+                                  { key: "name" as const, label: "NAME" },
+                                  { key: "role" as const, label: "ROLE" },
+                                  { key: "email" as const, label: "EMAIL" },
+                                  { key: "phone" as const, label: "PHONE NUMBER" },
+                                  { key: "preferredChannels" as const, label: "PREFERRED CHANNELS" },
+                                  { key: "createDate" as const, label: "CREATE DATE" },
+                                ].map(({ key, label }) => (
+                                  <div
+                                    key={key}
+                                    className="flex flex-col gap-0.5 border-b border-border px-density-md py-density-sm last:border-b-0 dark:border-gray-700"
+                                    style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                  >
+                                    <span
+                                      className="font-semibold uppercase tracking-wider text-muted-foreground"
+                                      style={{ fontSize: "10px", letterSpacing: "0.08em" }}
+                                    >
+                                      {label}
+                                    </span>
+                                    <Input
+                                      value={contactEditDraft[key] ?? ""}
+                                      onChange={(e) =>
+                                        setContactEditDraft((prev) =>
+                                          prev ? { ...prev, [key]: e.target.value } : null
+                                        )
+                                      }
+                                      className="h-8 text-sm"
+                                      placeholder={key === "preferredChannels" || key === "createDate" ? "—" : ""}
+                                    />
+                                  </div>
+                                ))}
+                              </>
+                            ) : (
+                              detailRows.map(({ label, value }) => (
+                                <div
+                                  key={label}
+                                  className="flex flex-col gap-0.5 border-b border-border px-density-md py-density-sm last:border-b-0 dark:border-gray-700"
+                                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                >
+                                  <span
+                                    className="font-semibold uppercase tracking-wider text-muted-foreground"
+                                    style={{ fontSize: "10px", letterSpacing: "0.08em" }}
+                                  >
+                                    {label}
+                                  </span>
+                                  <span className="text-gray-900 dark:text-gray-100">{value}</span>
+                                </div>
+                              ))
+                            )}
                           </div>
                         </div>
                       )}
@@ -1024,22 +1130,33 @@ export default function CaseDetailContent({
                 >
                   Related Cases (
                   {
-                    relatedCaseNumbers.filter((caseNum) => {
+                    localRelatedCaseNumbers.filter((caseNum) => {
                       const c = resolveCase(caseNum);
                       return c && getAccountById(c.accountId)?.orgId === account.orgId;
                     }).length
                   }
                   )
                 </h3>
-                {onOpenLinkModal && (
-                  <Button variant="outline" size="sm" className="gap-1" onClick={onOpenLinkModal}>
-                    <Icon name="link" size={14} />
-                    Link case
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRelatedCasesEditMode((prev) => !prev)}
+                    className="underline text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
+                    style={{ fontSize: "var(--tally-font-size-xs)" }}
+                    title={relatedCasesEditMode ? "Done editing" : "Edit related cases"}
+                  >
+                    {relatedCasesEditMode ? "Cancel" : "Edit"}
+                  </button>
+                  {onOpenLinkModal && (
+                    <Button variant="outline" size="sm" className="gap-1" onClick={onOpenLinkModal}>
+                      <Icon name="link" size={14} />
+                      Link case
+                    </Button>
+                  )}
+                </div>
               </div>
               {(() => {
-                const relatedSameOrg = relatedCaseNumbers.filter((caseNum) => {
+                const relatedSameOrg = localRelatedCaseNumbers.filter((caseNum) => {
                   const c = resolveCase(caseNum);
                   return c != null && getAccountById(c.accountId)?.orgId === account.orgId;
                 });
@@ -1059,6 +1176,11 @@ export default function CaseDetailContent({
                           <TableHead className="w-10" style={{ fontSize: "var(--tally-font-size-xs)" }} aria-label="Open in new window">
                             <span className="sr-only">Open in new window</span>
                           </TableHead>
+                          {relatedCasesEditMode && (
+                            <TableHead className="w-20" aria-label="Remove from list">
+                              <span className="sr-only">Remove</span>
+                            </TableHead>
+                          )}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1116,6 +1238,23 @@ export default function CaseDetailContent({
                                   <Icon name="open_in_new" size={18} />
                                 </Link>
                               </TableCell>
+                              {relatedCasesEditMode && (
+                                <TableCell className="w-20">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newList = localRelatedCaseNumbers.filter((cn) => cn !== linkedCase.caseNumber);
+                                      setLocalRelatedCaseNumbers(newList);
+                                      onUpdateCase?.({ relatedCases: newList });
+                                    }}
+                                    className="underline text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                    style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                    title="Remove from related cases"
+                                  >
+                                    Remove
+                                  </button>
+                                </TableCell>
+                              )}
                             </TableRow>
                           );
                         })}

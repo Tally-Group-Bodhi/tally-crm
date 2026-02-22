@@ -917,7 +917,8 @@ export default function SettingsPage() {
                   <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Escalate at</label>
                   <div className="flex gap-density-sm">
                     <Input type="number" min={1} max={99} value={slaForm.escalateAt} onChange={(e) => setSlaForm((f) => ({ ...f, escalateAt: parseInt(e.target.value, 10) || 90 }))} className="h-9 flex-1" />
-                    <Select className="h-9 w-[100px] shrink-0" value="pct"><option value="pct">% elapsed</option></Select>
+                    <Select className="h-9 w-[100px] shrink-0" value="pct" onChange={() => {}}>
+                    <option value="pct">% elapsed</option></Select>
                   </div>
                 </div>
               </div>
