@@ -16,6 +16,20 @@ import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { mockOrgs, getAccountsByOrgId } from "@/lib/mock-data/accounts";
 import type { Org, OrgType } from "@/types/crm";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs/Tabs";
+import { SummaryCard, EntityCard, CardGrid } from "@/components/crm/ManagementGrid";
+
+const statusVariant: Record<string, "success" | "error" | "outline"> = {
+  Active: "success",
+  Suspended: "error",
+  Closed: "outline",
+};
+
+const typeVariant: Record<string, "default" | "info" | "secondary"> = {
+  Industrial: "default",
+  Commercial: "info",
+  Residential: "secondary",
+};
 
 const ORG_TYPES: { value: OrgType; label: string }[] = [
   { value: "Parent Company", label: "Parent Company" },
@@ -171,22 +185,11 @@ function NewOrgModal({
   );
 }
 
-const statusVariant: Record<string, "success" | "error" | "outline"> = {
-  Active: "success",
-  Suspended: "error",
-  Closed: "outline",
-};
-
-const typeVariant: Record<string, "default" | "info" | "secondary"> = {
-  Industrial: "default",
-  Commercial: "info",
-  Residential: "secondary",
-};
-
 export default function OrgManagementPage() {
   const [search, setSearch] = React.useState("");
   const [modalOpen, setModalOpen] = React.useState(false);
   const [localOrgs, setLocalOrgs] = React.useState<Org[]>([]);
+  const [activeTab, setActiveTab] = React.useState("table");
 
   const allOrgs = React.useMemo(() => [...mockOrgs, ...localOrgs], [localOrgs]);
 
@@ -241,88 +244,127 @@ export default function OrgManagementPage() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-white dark:border-gray-700 dark:bg-gray-900">
-          <Table dense>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead>Org name</TableHead>
-                <TableHead className="text-right">Accounts</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Contacts</TableHead>
-                <TableHead className="w-10" aria-hidden />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredOrgs.map((org: Org) => {
-                const accounts = getAccountsByOrgId(org.id);
-                const firstAccount = accounts[0];
-                const totalContacts = accounts.reduce(
-                  (sum, acc) => sum + acc.contacts.length,
-                  0
-                );
-                return (
-                  <TableRow key={org.id}>
-                    <TableCell>
-                      <Link
-                        href={`/crm/customer/orgs/${org.id}`}
-                        className="font-medium text-[#006180] hover:underline dark:text-[#80E0FF]"
-                      >
-                        {org.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {accounts.length}
-                    </TableCell>
-                    <TableCell>
-                      {firstAccount ? (
-                        <Badge
-                          variant={typeVariant[firstAccount.type] ?? "outline"}
-                          className="text-xs"
-                        >
-                          {firstAccount.type}
-                        </Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {firstAccount ? (
-                        <Badge
-                          variant={
-                            statusVariant[firstAccount.status] ?? "outline"
-                          }
-                          className="text-xs"
-                        >
-                          {firstAccount.status}
-                        </Badge>
-                      ) : (
-                        "—"
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {totalContacts}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/crm/customer/orgs/${org.id}`}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-                        aria-label={`Open ${org.name}`}
-                      >
-                        <Icon name="chevron_right" size={18} />
-                      </Link>
-                    </TableCell>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-4 h-10 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+            <TabsTrigger
+              value="table"
+              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
+            >
+              Table
+            </TabsTrigger>
+            <TabsTrigger
+              value="org-chart"
+              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
+            >
+              Org Chart
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="table" className="mt-0">
+            <div className="rounded-lg border border-border bg-white dark:border-gray-700 dark:bg-gray-900">
+              <Table dense>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Org name</TableHead>
+                    <TableHead className="text-right">Accounts</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Contacts</TableHead>
+                    <TableHead className="w-10" aria-hidden />
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-          {filteredOrgs.length === 0 && (
-            <div className="py-12 text-center text-sm text-muted-foreground">
-              No organisations match your search.
+                </TableHeader>
+                <TableBody>
+                  {filteredOrgs.map((org: Org) => {
+                    const accounts = getAccountsByOrgId(org.id);
+                    const firstAccount = accounts[0];
+                    const totalContacts = accounts.reduce((sum, acc) => sum + acc.contacts.length, 0);
+                    return (
+                      <TableRow key={org.id}>
+                        <TableCell>
+                          <Link
+                            href={`/crm/customer/orgs/${org.id}`}
+                            className="font-medium text-[#006180] hover:underline dark:text-[#80E0FF]"
+                          >
+                            {org.name}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">{accounts.length}</TableCell>
+                        <TableCell>
+                          {firstAccount ? (
+                            <Badge variant={typeVariant[firstAccount.type] ?? "outline"} className="text-xs">
+                              {firstAccount.type}
+                            </Badge>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {firstAccount ? (
+                            <Badge variant={statusVariant[firstAccount.status] ?? "outline"} className="text-xs">
+                              {firstAccount.status}
+                            </Badge>
+                          ) : (
+                            "—"
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right text-muted-foreground">{totalContacts}</TableCell>
+                        <TableCell>
+                          <Link
+                            href={`/crm/customer/orgs/${org.id}`}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                            aria-label={`Open ${org.name}`}
+                          >
+                            <Icon name="chevron_right" size={18} />
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              {filteredOrgs.length === 0 && (
+                <div className="py-12 text-center text-sm text-muted-foreground">No organisations match your search.</div>
+              )}
             </div>
-          )}
-        </div>
+          </TabsContent>
+
+          <TabsContent value="org-chart" className="mt-0">
+            <div className="rounded-lg border border-[#e0e0e0] bg-[#f5f5f5] p-6 dark:border-gray-700 dark:bg-gray-900/50">
+              <SummaryCard
+                icon={<Icon name="apartment" size={22} className="text-[#5b21b6]" />}
+                title="Organisations"
+                count={filteredOrgs.length}
+                countLabel={filteredOrgs.length === 1 ? "organisation" : "organisations"}
+              />
+              <CardGrid>
+                {filteredOrgs.map((org: Org) => {
+                  const accounts = getAccountsByOrgId(org.id);
+                  const totalContacts = accounts.reduce((sum, acc) => sum + acc.contacts.length, 0);
+                  const sublabel = [
+                    accounts.length ? `${accounts.length} account${accounts.length !== 1 ? "s" : ""}` : null,
+                    totalContacts ? `${totalContacts} contact${totalContacts !== 1 ? "s" : ""}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ");
+                  return (
+                    <EntityCard
+                      key={org.id}
+                      type="org"
+                      name={org.name}
+                      sublabel={sublabel || undefined}
+                      href={`/crm/customer/orgs/${org.id}`}
+                    />
+                  );
+                })}
+              </CardGrid>
+              {filteredOrgs.length === 0 && (
+                <div className="py-12 text-center text-sm text-[#616161] dark:text-gray-400">
+                  No organisations match your search.
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {modalOpen && (

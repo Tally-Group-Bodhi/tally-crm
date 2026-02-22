@@ -15,7 +15,22 @@ import Button from "@/components/Button/Button";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { mockAccounts, mockOrgs } from "@/lib/mock-data/accounts";
+import { getCasesByAccountId } from "@/lib/mock-data/cases";
 import type { Account, AccountType, Contact } from "@/types/crm";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs/Tabs";
+import { SummaryCard, EntityCard, CardGrid, getInitials, getAvatarHex } from "@/components/crm/ManagementGrid";
+
+const statusVariant: Record<string, "success" | "error" | "outline"> = {
+  Active: "success",
+  Suspended: "error",
+  Closed: "outline",
+};
+
+const typeVariant: Record<string, "default" | "info" | "secondary"> = {
+  Industrial: "default",
+  Commercial: "info",
+  Residential: "secondary",
+};
 
 /* ─── New Account Modal ─────────────────────────────────────────────────── */
 
@@ -248,22 +263,12 @@ function NewAccountModal({
   );
 }
 
-const statusVariant: Record<string, "success" | "error" | "outline"> = {
-  Active: "success",
-  Suspended: "error",
-  Closed: "outline",
-};
-
-const typeVariant: Record<string, "default" | "info" | "secondary"> = {
-  Industrial: "default",
-  Commercial: "info",
-  Residential: "secondary",
-};
-
 export default function AccountManagementPage() {
   const [search, setSearch] = React.useState("");
   const [modalOpen, setModalOpen] = React.useState(false);
   const [localAccounts, setLocalAccounts] = React.useState<Account[]>([]);
+  const [activeTab, setActiveTab] = React.useState("table");
+  const [selectedAccountId, setSelectedAccountId] = React.useState<string | null>(null);
 
   const allAccounts = React.useMemo(
     () => [...mockAccounts, ...localAccounts],
@@ -325,70 +330,211 @@ export default function AccountManagementPage() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-white dark:border-gray-700 dark:bg-gray-900">
-            <Table dense>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Account name</TableHead>
-                  <TableHead>Account number</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Contacts</TableHead>
-                  <TableHead className="w-10" aria-hidden />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAccounts.map((account: Account) => (
-                  <TableRow key={account.id}>
-                    <TableCell>
-                      <Link
-                        href={`/crm/customer/accounts/${account.id}`}
-                        className="font-medium text-[#006180] hover:underline dark:text-[#80E0FF]"
-                      >
-                        {account.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground font-mono text-sm">
-                      {account.accountNumber}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={typeVariant[account.type] ?? "outline"}
-                        className="text-xs"
-                      >
-                        {account.type}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={statusVariant[account.status] ?? "outline"}
-                        className="text-xs"
-                      >
-                        {account.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {account.contacts.length}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/crm/customer/accounts/${account.id}`}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-                        aria-label={`Open ${account.name} settings`}
-                      >
-                        <Icon name="chevron_right" size={18} />
-                      </Link>
-                    </TableCell>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-4 h-10 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+            <TabsTrigger
+              value="table"
+              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
+            >
+              Table
+            </TabsTrigger>
+            <TabsTrigger
+              value="org-chart"
+              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
+            >
+              Org Chart
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="table" className="mt-0">
+            <div className="rounded-lg border border-border bg-white dark:border-gray-700 dark:bg-gray-900">
+              <Table dense>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>Account name</TableHead>
+                    <TableHead>Account number</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Contacts</TableHead>
+                    <TableHead className="w-10" aria-hidden />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            {filteredAccounts.length === 0 && (
-              <div className="py-12 text-center text-sm text-muted-foreground">
-                No accounts match your search.
+                </TableHeader>
+                <TableBody>
+                  {filteredAccounts.map((account: Account) => (
+                    <TableRow key={account.id}>
+                      <TableCell>
+                        <Link
+                          href={`/crm/customer/accounts/${account.id}`}
+                          className="font-medium text-[#006180] hover:underline dark:text-[#80E0FF]"
+                        >
+                          {account.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground font-mono text-sm">{account.accountNumber}</TableCell>
+                      <TableCell>
+                        <Badge variant={typeVariant[account.type] ?? "outline"} className="text-xs">
+                          {account.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant[account.status] ?? "outline"} className="text-xs">
+                          {account.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">{account.contacts.length}</TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/crm/customer/accounts/${account.id}`}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                          aria-label={`Open ${account.name} settings`}
+                        >
+                          <Icon name="chevron_right" size={18} />
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {filteredAccounts.length === 0 && (
+                <div className="py-12 text-center text-sm text-muted-foreground">No accounts match your search.</div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="org-chart" className="mt-0">
+            <div className="rounded-lg border border-[#e0e0e0] bg-[#f5f5f5] p-6 dark:border-gray-700 dark:bg-gray-900/50">
+              <SummaryCard
+                icon={<Icon name="business" size={22} className="text-[#5b21b6]" />}
+                title="Accounts"
+                count={filteredAccounts.length}
+                countLabel={filteredAccounts.length === 1 ? "account" : "accounts"}
+              />
+              <CardGrid>
+                {filteredAccounts.map((account: Account) => {
+                  const isSelected = selectedAccountId === account.id;
+                  return (
+                    <div key={account.id} className="block">
+                      <EntityCard
+                        type="account"
+                        name={account.name}
+                        sublabel={account.accountNumber ? `${account.accountNumber} · ${account.contacts.length} contact${account.contacts.length !== 1 ? "s" : ""}` : undefined}
+                        selected={isSelected}
+                        onClick={() => setSelectedAccountId(isSelected ? null : account.id)}
+                      />
+                    </div>
+                  );
+                })}
+              </CardGrid>
+              {filteredAccounts.length === 0 && (
+                <div className="py-12 text-center text-sm text-[#616161] dark:text-gray-400">
+                  No accounts match your search.
+                </div>
+              )}
+            </div>
+
+            {selectedAccountId && (() => {
+          const selectedAccount = filteredAccounts.find((a) => a.id === selectedAccountId);
+          if (!selectedAccount) return null;
+          const accountCases = getCasesByAccountId(selectedAccount.id);
+          const selectedContacts = [...new Map(selectedAccount.contacts.map((c) => [c.id, c])).values()];
+          return (
+            <div className="mt-4 rounded-b-lg border border-t-0 border-[#e0e0e0] bg-white p-5 dark:border-gray-700 dark:bg-gray-900/30">
+              {accountCases.length > 0 && (
+                <div className="mb-6">
+                  <div className="mb-3 text-[12px] font-normal text-[#616161] dark:text-gray-400">
+                    Cases at {selectedAccount.name} ({accountCases.length})
+                  </div>
+                  <div className="space-y-4">
+                    {accountCases.map((caseItem) => (
+                      <div
+                        key={caseItem.id}
+                        className="rounded-lg border border-[#e0e0e0] bg-[#fafafa] p-4 dark:border-gray-600 dark:bg-gray-800/40"
+                      >
+                        <Link
+                          href={`/crm/cases/${caseItem.id}`}
+                          className="mb-3 flex items-center gap-2 font-semibold text-[#252423] hover:text-[#6264a7] dark:text-gray-100 dark:hover:text-violet-400"
+                          style={{ fontSize: 13 }}
+                        >
+                          {caseItem.caseNumber}
+                          <span className="font-normal text-[#616161] dark:text-gray-400">
+                            · {caseItem.type} · {caseItem.subType} · {caseItem.status}
+                          </span>
+                        </Link>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div>
+                            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[#8a8886] dark:text-gray-500">Contacts</div>
+                            {selectedContacts.length === 0 ? (
+                              <p className="text-[12px] text-[#616161] dark:text-gray-400">No contacts</p>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                {selectedContacts.slice(0, 5).map((contact) => (
+                                  <Link
+                                    key={contact.id}
+                                    href={`/crm/customer/contacts?contact=${contact.id}`}
+                                    className="flex items-center gap-1.5 rounded-md border border-[#e0e0e0] bg-white px-2 py-1.5 text-[12px] transition-colors hover:bg-[#f3f2f1] dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700/50"
+                                  >
+                                    <div
+                                      className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+                                      style={{ background: getAvatarHex(contact.name, 1) }}
+                                    >
+                                      {getInitials(contact.name)}
+                                    </div>
+                                    <span className="font-medium text-[#252423] dark:text-gray-100">{contact.name}</span>
+                                    {contact.role && <span className="text-[11px] text-[#616161] dark:text-gray-400">· {contact.role}</span>}
+                                  </Link>
+                                ))}
+                                {selectedContacts.length > 5 && <span className="text-[11px] text-[#616161] dark:text-gray-400">+{selectedContacts.length - 5} more</span>}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[#8a8886] dark:text-gray-500">Assigned</div>
+                            <span
+                              className="inline-flex items-center gap-1.5 rounded-md border border-[#e0e0e0] bg-white px-2 py-1.5 text-[12px] dark:border-gray-600 dark:bg-gray-800"
+                              style={{ borderLeft: "3px solid #0d9488" }}
+                            >
+                              <span className="font-medium text-[#252423] dark:text-gray-100">{caseItem.owner}</span>
+                              <span className="text-[11px] text-[#616161] dark:text-gray-400">· {caseItem.team}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="mb-3 text-[12px] font-normal text-[#616161] dark:text-gray-400">
+                People at {selectedAccount.name} ({selectedContacts.length})
               </div>
-            )}
-        </div>
+              {selectedContacts.length === 0 ? (
+                <p className="text-[12px] text-[#616161] dark:text-gray-400">No contacts for this account.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-x-2 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+                  {selectedContacts.map((contact) => (
+                    <Link
+                      key={contact.id}
+                      href={`/crm/customer/contacts?contact=${contact.id}`}
+                      className="flex items-center gap-2.5 rounded-md py-1.5 pr-2 transition-colors hover:bg-[#f3f2f1] dark:hover:bg-gray-700/50"
+                    >
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold text-white"
+                        style={{ background: getAvatarHex(contact.name, 1) }}
+                      >
+                        {getInitials(contact.name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] font-semibold text-[#252423] dark:text-gray-100">{contact.name}</div>
+                        {contact.role && <div className="truncate text-[11px] text-[#616161] dark:text-gray-400">{contact.role}</div>}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+          </TabsContent>
+        </Tabs>
       </div>
 
       {modalOpen && (
