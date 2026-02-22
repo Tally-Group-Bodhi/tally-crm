@@ -1,0 +1,35 @@
+---
+description: Container max-widths and main content layout for tally-crm
+alwaysApply: true
+---
+
+# Layout & Container Max-Widths
+
+Use these values for the main content wrapper so layout stays consistent across the app.
+
+## Primary content containers
+
+- **List/dashboard pages** (Cases, Communications, Contracts, Opportunities, Dashboard, Settings, Performance, Customer list pages, Cases summary):  
+  `max-w-[1600px]` with `mx-auto` and `p-density-xl` (or `p-6` where density isn’t used).  
+  Example: `<div className="mx-auto w-full min-w-0 max-w-[1600px] p-density-xl">`
+
+- **Detail/content pages** (Case detail, Contact detail, Pipeline detail):  
+  `max-w-[1400px]` with `mx-auto` and `w-full min-w-0` where needed.  
+  Example: `<div className="mx-auto w-full min-w-0 max-w-[1400px]">`
+
+## Narrower layouts
+
+- **900px**: CRM home (`app/crm/page.tsx`), Customer landing, Customer account detail.
+- **1000px**: Customer org detail.
+- **720px**: Changelog, simple single-column pages.
+
+## Modals and dialogs
+
+- Prefer Tailwind presets: `max-w-lg`, `max-w-md`, `max-w-sm` for standard dialogs/sheets.
+- Large modals (e.g. New Case): use explicit values like `max-w-[720px]` when needed.
+
+## Conventions
+
+- Do not introduce new arbitrary max-widths without matching one of the above categories.
+- Prefer `min-w-0` on flex/grid children that contain the container to avoid overflow.
+- If adding a global CSS variable for container width later (e.g. `--tally-container-max`), use it in Tailwind and reference it in this rule.
