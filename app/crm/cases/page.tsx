@@ -121,6 +121,8 @@ const priorityVariant: Record<CasePriority, "error" | "warning" | "info" | "outl
 export default function CaseListPage() {
   const [viewMode, setViewMode] = React.useState<ViewMode>("list");
   const [tabViewSelectedCaseId, setTabViewSelectedCaseId] = React.useState<string | null>(null);
+  const [tabViewNotePanelOpen, setTabViewNotePanelOpen] = React.useState(false);
+  const [tabViewCallLogPanelOpen, setTabViewCallLogPanelOpen] = React.useState(false);
   const [listView, setListView] = React.useState<ListViewId>("all");
   const kanbanRef = React.useRef<HTMLDivElement>(null);
   const [cases, setCases] = React.useState(mockCases);
@@ -136,6 +138,7 @@ export default function CaseListPage() {
     caseId: string;
   }>({ open: false, x: 0, y: 0, caseId: "" });
   const contextMenuRef = React.useRef<HTMLDivElement>(null);
+  const tabViewCaseDetailContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Convert vertical mouse-wheel into horizontal scroll for kanban board
   React.useEffect(() => {
@@ -162,6 +165,14 @@ export default function CaseListPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [contextMenu.open]);
+
+  // Close note/call panels when switching cases in tab view
+  React.useEffect(() => {
+    if (viewMode === "tab") {
+      setTabViewNotePanelOpen(false);
+      setTabViewCallLogPanelOpen(false);
+    }
+  }, [viewMode, tabViewSelectedCaseId]);
 
   const handleCaseContextMenu = React.useCallback(
     (e: React.MouseEvent, caseId: string) => {
@@ -496,9 +507,31 @@ export default function CaseListPage() {
                 }
                 return (
                   <>
-                    <AccountContextPanel account={account} />
-                    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto">
-                      <CaseDetailContent caseItem={caseItem} account={account} showBreadcrumbs={false} />
+                    <AccountContextPanel
+                      account={account}
+                      linkedCaseNumbers={caseItem.relatedCases}
+                      currentCaseId={caseItem.id}
+                      onOpenNotePanel={() => setTabViewNotePanelOpen(true)}
+                      onOpenCallLogPanel={() => setTabViewCallLogPanelOpen(true)}
+                    />
+                    <div
+                      ref={tabViewCaseDetailContainerRef}
+                      className="relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto"
+                    >
+                      <CaseDetailContent
+                        caseItem={caseItem}
+                        account={account}
+                        showBreadcrumbs={false}
+                        showOpenInFullPage
+                        relatedCaseNumbers={caseItem.relatedCases}
+                        onOpenNotePanel={() => setTabViewNotePanelOpen(true)}
+                        onOpenCallLogPanel={() => setTabViewCallLogPanelOpen(true)}
+                        notePanelOpen={tabViewNotePanelOpen}
+                        onCloseNotePanel={() => setTabViewNotePanelOpen(false)}
+                        callLogPanelOpen={tabViewCallLogPanelOpen}
+                        onCloseCallLogPanel={() => setTabViewCallLogPanelOpen(false)}
+                        portalContainerRef={tabViewCaseDetailContainerRef}
+                      />
                     </div>
                   </>
                 );

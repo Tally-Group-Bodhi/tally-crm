@@ -32,6 +32,8 @@ export interface NotePanelProps {
     communication: Communication;
     activity: Activity;
   }) => void | Promise<void>;
+  /** When set, panel is portaled into this container and uses absolute positioning (e.g. tab view) */
+  portalContainer?: HTMLElement | null;
 }
 
 export default function NotePanel({
@@ -39,6 +41,7 @@ export default function NotePanel({
   onOpenChange,
   caseItem,
   onSave,
+  portalContainer,
 }: NotePanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [title, setTitle] = useState("");
@@ -55,49 +58,48 @@ export default function NotePanel({
   const draftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const draftKey = `${DRAFT_KEY_PREFIX}${caseItem.id}`;
+  const contained = !!portalContainer;
 
   useEffect(() => {
     if (open) {
-      document.body.style.overflow = "hidden";
-      // Always open in default position and mini state
+      if (contained && portalContainer) {
+        portalContainer.style.overflow = "hidden";
+      } else {
+        document.body.style.overflow = "hidden";
+      }
       setDragOffset({ x: 0, y: 0 });
       setExpanded(false);
     } else {
-      document.body.style.overflow = "";
+      if (contained && portalContainer) {
+        portalContainer.style.overflow = "";
+      } else {
+        document.body.style.overflow = "";
+      }
     }
     return () => {
-      document.body.style.overflow = "";
+      if (contained && portalContainer) {
+        portalContainer.style.overflow = "";
+      } else {
+        document.body.style.overflow = "";
+      }
     };
-  }, [open]);
+  }, [open, contained, portalContainer]);
 
-  // Restore draft when opening
+  // Start with empty note when opening (new note = fresh; draft no longer restored)
   useEffect(() => {
     if (!open) return;
-    try {
-      const raw = localStorage.getItem(draftKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const savedBody = parsed.body;
-        const savedTitle = typeof parsed.title === "string" ? parsed.title : "";
-        const savedAttachments = Array.isArray(parsed.attachments) ? parsed.attachments : [];
-        setTitle(savedTitle);
-        setBody(typeof savedBody === "string" ? savedBody : "");
-        setAttachments(savedAttachments);
-        if (editorRef.current && typeof savedBody === "string" && savedBody) {
-          editorRef.current.innerHTML = savedBody;
-        }
-      } else {
-        setTitle("");
-        setBody("");
-        setAttachments([]);
-        if (editorRef.current) editorRef.current.innerHTML = "";
-      }
-    } catch {
-      setTitle("");
-      setBody("");
-      setAttachments([]);
-    }
+    setTitle("");
+    setBody("");
+    setAttachments([]);
     setLastDraftSaved(null);
+    try {
+      localStorage.removeItem(draftKey);
+    } catch {}
+    // Clear contentEditable after mount
+    const timer = setTimeout(() => {
+      if (editorRef.current) editorRef.current.innerHTML = "";
+    }, 0);
+    return () => clearTimeout(timer);
   }, [open, draftKey]);
 
   // Persist draft (debounced)
@@ -282,6 +284,10 @@ export default function NotePanel({
     setExpanded((e) => !e);
   };
 
+  const handleResetPosition = () => {
+    setDragOffset({ x: 0, y: 0 });
+  };
+
   // Dragging for mini state
   const onDragHandleMouseDown = (e: React.MouseEvent) => {
     if (expanded) return;
@@ -450,19 +456,22 @@ export default function NotePanel({
 
   if (!open || typeof document === "undefined") return null;
 
+  const portalTarget = portalContainer ?? document.body;
+  const posClass = contained ? "absolute" : "fixed";
+
   // Expanded: centred modal overlay — clicking overlay minimizes to mini, does not close
   if (expanded) {
     return createPortal(
       <>
         <div
-          className="fixed inset-0 z-50 bg-black/50"
+          className={`${posClass} inset-0 z-50 bg-black/50`}
           aria-hidden
           onClick={() => setExpanded(false)}
         />
         <div
           role="dialog"
           aria-labelledby="note-panel-title"
-          className="fixed left-1/2 top-1/2 z-50 flex w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          className={`${posClass} left-1/2 top-1/2 z-50 flex w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100`}
           style={{
             maxHeight: "min(75vh, 640px)",
             boxShadow:
@@ -511,7 +520,7 @@ export default function NotePanel({
           </div>
         </div>
       </>,
-      document.body
+      portalTarget
     );
   }
 
@@ -521,7 +530,7 @@ export default function NotePanel({
       role="dialog"
       aria-labelledby="note-panel-title"
       className={cn(
-        "fixed z-50 flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+        `${posClass} z-50 flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100`,
         "transition-[box-shadow] duration-200",
         dragging && "shadow-2xl"
       )}
@@ -534,7 +543,7 @@ export default function NotePanel({
           "0 20px 40px -12px rgba(0,0,0,0.15), 0 8px 20px -8px rgba(0,0,0,0.1)",
       }}
     >
-      {/* Header: drag handle, title, expand, close */}
+      {/* Header: drag handle, title, reset position, expand, close */}
       <div
         className="flex shrink-0 cursor-grab items-center gap-2 border-b border-border bg-gray-50 px-3 py-2.5 active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800"
         onMouseDown={onDragHandleMouseDown}
@@ -562,8 +571,17 @@ export default function NotePanel({
         )}
         <button
           type="button"
+          onClick={handleResetPosition}
+          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
+          aria-label="Reset position"
+          title="Reset position to default"
+        >
+          <Icon name="south_east" size={18} />
+        </button>
+        <button
+          type="button"
           onClick={handleExpandToggle}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
           aria-label="Expand"
         >
           <Icon name="open_in_full" size={18} />
@@ -571,7 +589,7 @@ export default function NotePanel({
         <button
           type="button"
           onClick={handleClose}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
           aria-label="Close"
         >
           <Icon name="close" size={18} />
@@ -583,5 +601,5 @@ export default function NotePanel({
     </div>
   );
 
-  return createPortal(miniCard, document.body);
+  return createPortal(miniCard, portalTarget);
 }

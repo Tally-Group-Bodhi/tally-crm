@@ -31,6 +31,8 @@ export interface CallLogPanelProps {
     communication: Communication;
     activity: Activity;
   }) => void | Promise<void>;
+  /** When set, panel is portaled into this container and uses absolute positioning (e.g. tab view) */
+  portalContainer?: HTMLElement | null;
 }
 
 export default function CallLogPanel({
@@ -38,6 +40,7 @@ export default function CallLogPanel({
   onOpenChange,
   caseItem,
   onSave,
+  portalContainer,
 }: CallLogPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [direction, setDirection] = useState<CallDirection>("Outbound");
@@ -50,18 +53,32 @@ export default function CallLogPanel({
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, offsetX: 0, offsetY: 0 });
 
+  const contained = !!portalContainer;
+
   useEffect(() => {
     if (open) {
-      document.body.style.overflow = "hidden";
+      if (contained && portalContainer) {
+        portalContainer.style.overflow = "hidden";
+      } else {
+        document.body.style.overflow = "hidden";
+      }
       setDragOffset({ x: 0, y: 0 });
       setExpanded(false);
     } else {
-      document.body.style.overflow = "";
+      if (contained && portalContainer) {
+        portalContainer.style.overflow = "";
+      } else {
+        document.body.style.overflow = "";
+      }
     }
     return () => {
-      document.body.style.overflow = "";
+      if (contained && portalContainer) {
+        portalContainer.style.overflow = "";
+      } else {
+        document.body.style.overflow = "";
+      }
     };
-  }, [open]);
+  }, [open, contained, portalContainer]);
 
   // Reset form when opening
   useEffect(() => {
@@ -251,18 +268,21 @@ export default function CallLogPanel({
 
   if (!open || typeof document === "undefined") return null;
 
+  const portalTarget = portalContainer ?? document.body;
+  const posClass = contained ? "absolute" : "fixed";
+
   if (expanded) {
     return createPortal(
       <>
         <div
-          className="fixed inset-0 z-50 bg-black/50"
+          className={`${posClass} inset-0 z-50 bg-black/50`}
           aria-hidden
           onClick={() => setExpanded(false)}
         />
         <div
           role="dialog"
           aria-labelledby="call-log-panel-title"
-          className="fixed left-1/2 top-1/2 z-50 flex w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          className={`${posClass} left-1/2 top-1/2 z-50 flex w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100`}
           style={{
             maxHeight: "min(75vh, 520px)",
             boxShadow:
@@ -302,7 +322,7 @@ export default function CallLogPanel({
           </div>
         </div>
       </>,
-      document.body
+      portalTarget
     );
   }
 
@@ -311,7 +331,7 @@ export default function CallLogPanel({
       role="dialog"
       aria-labelledby="call-log-panel-title"
       className={cn(
-        "fixed z-50 flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+        `${posClass} z-50 flex flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100`,
         "transition-[box-shadow] duration-200",
         dragging && "shadow-2xl"
       )}
@@ -361,5 +381,5 @@ export default function CallLogPanel({
     </div>
   );
 
-  return createPortal(miniCard, document.body);
+  return createPortal(miniCard, portalTarget);
 }

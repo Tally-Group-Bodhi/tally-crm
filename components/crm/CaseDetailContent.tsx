@@ -107,6 +107,8 @@ interface CaseDetailContentProps {
   callLogPanelOpen?: boolean;
   /** Close the call log panel */
   onCloseCallLogPanel?: () => void;
+  /** When set (e.g. tab view), note/call panels are portaled into this container */
+  portalContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
 export default function CaseDetailContent({
@@ -125,6 +127,7 @@ export default function CaseDetailContent({
   onCloseNotePanel,
   callLogPanelOpen = false,
   onCloseCallLogPanel,
+  portalContainerRef,
 }: CaseDetailContentProps) {
   const handleNotePanelOpenChange = React.useCallback(
     (open: boolean) => {
@@ -922,6 +925,7 @@ export default function CaseDetailContent({
               }
             : undefined
         }
+        portalContainer={portalContainerRef?.current}
       />
 
       <CallLogPanel
@@ -938,6 +942,7 @@ export default function CaseDetailContent({
               }
             : undefined
         }
+        portalContainer={portalContainerRef?.current}
       />
       </div>
     </div>
