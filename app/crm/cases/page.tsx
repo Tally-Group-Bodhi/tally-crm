@@ -27,6 +27,7 @@ import SLAIndicator from "@/components/crm/SLAIndicator";
 import CaseListSidebar from "@/components/crm/CaseListSidebar";
 import AccountContextPanel from "@/components/crm/AccountContextPanel";
 import CaseDetailContent from "@/components/crm/CaseDetailContent";
+import { generateCaseNumber } from "@/lib/case-number";
 import type { CaseItem, CasePriority, CaseStatus, CaseType } from "@/types/crm";
 const CASE_PRIORITIES: CasePriority[] = ["Critical", "High", "Medium", "Low"];
 const CASE_ORIGINS = ["Phone", "Email", "Web", "Chat", "Social Media"] as const;
@@ -193,6 +194,18 @@ export default function CaseListPage() {
       prev.map((c) => (c.id === caseId ? { ...c, status: newStatus } : c))
     );
   };
+
+  const handleTabViewUpdateCase = React.useCallback(
+    (payload: Partial<CaseItem>) => {
+      if (!tabViewSelectedCaseId) return;
+      setCases((prev) =>
+        prev.map((c) =>
+          c.id === tabViewSelectedCaseId ? { ...c, ...payload } : c
+        )
+      );
+    },
+    [tabViewSelectedCaseId]
+  );
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -526,6 +539,7 @@ export default function CaseListPage() {
                         relatedCaseNumbers={caseItem.relatedCases}
                         onOpenNotePanel={() => setTabViewNotePanelOpen(true)}
                         onOpenCallLogPanel={() => setTabViewCallLogPanelOpen(true)}
+                        onUpdateCase={handleTabViewUpdateCase}
                         notePanelOpen={tabViewNotePanelOpen}
                         onCloseNotePanel={() => setTabViewNotePanelOpen(false)}
                         callLogPanelOpen={tabViewCallLogPanelOpen}
@@ -1004,7 +1018,7 @@ function NewCaseModal({
     });
     return {
       id: `case-${String(caseCount + 1).padStart(3, "0")}`,
-      caseNumber: `CS-2026-${String(caseCount + 1847).padStart(6, "0")}`,
+      caseNumber: generateCaseNumber(selectedAccount?.name ?? "Unknown Account", caseCount + 1847),
       accountId: accountId || "acc-001",
       accountName: selectedAccount?.name ?? "Unknown Account",
       type: (CASE_GROUP_TO_TYPE[caseGroup] ?? CASE_GROUP_TO_TYPE[CASE_TYPE_TO_GROUP[caseType]] ?? "Enquiry") as CaseType,

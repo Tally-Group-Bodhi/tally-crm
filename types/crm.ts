@@ -2,7 +2,7 @@
 // CRM Module — TypeScript Interfaces
 // ────────────────────────────────────────────────────────────────────────────
 
-/** Case types from CS Energy workshops */
+/** Case types */
 export type CaseType =
   | "Complaint"
   | "Enquiry"
@@ -84,7 +84,7 @@ export interface Account {
   consolidateToParent?: boolean;
   /** Optional: is direct debit. */
   isDirectDebit?: boolean;
-  /** Optional: terms (e.g. CSEnergy14). */
+  /** Optional: terms (e.g. contract or tariff code). */
   terms?: string;
   /** Optional: service reference number. */
   serviceReferenceNumber?: string;

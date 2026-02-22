@@ -12,6 +12,7 @@ import {
   CASE_TYPE_TO_GROUP,
   CASE_GROUP_TO_REASON,
 } from "@/lib/mock-data/case-types";
+import { generateCaseNumber } from "@/lib/case-number";
 import type { CaseItem, CasePriority, CaseStatus, CaseType } from "@/types/crm";
 
 const CASE_PRIORITIES: CasePriority[] = ["Critical", "High", "Medium", "Low"];
@@ -258,7 +259,7 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
     });
     return {
       id: `case-${String(caseCount + 1).padStart(3, "0")}`,
-      caseNumber: `CS-2026-${String(caseCount + 1847).padStart(6, "0")}`,
+      caseNumber: generateCaseNumber(selectedAccount?.name ?? "Unknown Account", caseCount + 1847),
       accountId: accountId || "acc-001",
       accountName: selectedAccount?.name ?? "Unknown Account",
       type: (CASE_GROUP_TO_TYPE[caseGroup] ?? CASE_GROUP_TO_TYPE[CASE_TYPE_TO_GROUP[caseType]] ?? "Enquiry") as CaseType,

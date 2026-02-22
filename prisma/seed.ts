@@ -9,7 +9,7 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   const cases = [
     {
-      caseNumber: "CS-2026-001847",
+      caseNumber: "BBMC-2026-001847",
       accountId: "acc-001",
       accountName: "Bowen Basin Mining Corp",
       type: "Complaint",
@@ -33,7 +33,7 @@ async function main() {
       pendingReason: null,
     },
     {
-      caseNumber: "CS-2026-001832",
+      caseNumber: "GAS-2026-001832",
       accountId: "acc-002",
       accountName: "Gladstone Aluminium Smelter",
       type: "EWR",
@@ -57,7 +57,7 @@ async function main() {
       pendingReason: "3rd Party",
     },
     {
-      caseNumber: "CS-2026-001790",
+      caseNumber: "MSMO-2026-001790",
       accountId: "acc-003",
       accountName: "Mackay Sugar Mill Operations",
       type: "Enquiry",
