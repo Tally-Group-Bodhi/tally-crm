@@ -184,6 +184,8 @@ export interface Attachment {
   size: string;
   uploadedBy: string;
   uploadedDate: string;
+  /** Server path for uploaded files (relative to uploads root); used for download */
+  storagePath?: string;
 }
 
 // ── Pipeline / Opportunity ──────────────────────────────────────────────────

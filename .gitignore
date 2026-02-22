@@ -37,6 +37,9 @@ yarn-error.log*
 prisma/*.db
 *.db
 
+# uploaded case attachments (local storage)
+/uploads
+
 # vercel
 .vercel
 

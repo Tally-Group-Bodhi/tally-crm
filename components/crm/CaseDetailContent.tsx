@@ -24,6 +24,16 @@ import {
   DialogTitle,
 } from "@/components/Dialog/Dialog";
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/AlertDialog/AlertDialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -198,6 +208,8 @@ export default function CaseDetailContent({
   const [contactEditDraft, setContactEditDraft] = React.useState<Contact | null>(null);
   const [relatedCasesEditMode, setRelatedCasesEditMode] = React.useState(false);
   const [localRelatedCaseNumbers, setLocalRelatedCaseNumbers] = React.useState<string[]>(() => relatedCaseNumbers);
+  const [contactToRemove, setContactToRemove] = React.useState<Contact | null>(null);
+  const [relatedCaseToRemove, setRelatedCaseToRemove] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setLocalContacts(account.contacts);
@@ -770,7 +782,38 @@ export default function CaseDetailContent({
         <TabsContent value="related" className="mt-0 w-full">
           <div className="grid w-full grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-              <DocumentAttachments attachments={caseItem.attachments} />
+              <DocumentAttachments
+                attachments={caseItem.attachments}
+                caseId={onUpdateCase ? caseItem.id : undefined}
+                onUpload={
+                  onUpdateCase
+                    ? async (files: File[]) => {
+                        const formData = new FormData();
+                        files.forEach((f) => formData.append("files", f));
+                        const res = await fetch(
+                          `/api/cases/${caseItem.id}/attachments`,
+                          { method: "POST", body: formData }
+                        );
+                        if (!res.ok) throw new Error("Upload failed");
+                        const created = (await res.json()) as typeof caseItem.attachments;
+                        await onUpdateCase({
+                          attachments: [...(caseItem.attachments ?? []), ...created],
+                        });
+                      }
+                    : undefined
+                }
+                onRemove={
+                  onUpdateCase
+                    ? (attachmentId: string) => {
+                        onUpdateCase({
+                          attachments: (caseItem.attachments ?? []).filter(
+                            (a) => a.id !== attachmentId
+                          ),
+                        });
+                      }
+                    : undefined
+                }
+              />
             </div>
             <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
               <div className="mb-3 flex items-center justify-between gap-2">
@@ -887,8 +930,7 @@ export default function CaseDetailContent({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setLocalContacts((prev) => prev.filter((c) => c.id !== contact.id));
-                              if (expandedContactId === contact.id) setExpandedContactId(null);
+                              setContactToRemove(contact);
                             }}
                             className="shrink-0 underline text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                             style={{ fontSize: "var(--tally-font-size-xs)" }}
@@ -1242,11 +1284,7 @@ export default function CaseDetailContent({
                                 <TableCell className="w-20">
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      const newList = localRelatedCaseNumbers.filter((cn) => cn !== linkedCase.caseNumber);
-                                      setLocalRelatedCaseNumbers(newList);
-                                      onUpdateCase?.({ relatedCases: newList });
-                                    }}
+                                    onClick={() => setRelatedCaseToRemove(linkedCase.caseNumber)}
                                     className="underline text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                     style={{ fontSize: "var(--tally-font-size-xs)" }}
                                     title="Remove from related cases"
@@ -1515,6 +1553,81 @@ export default function CaseDetailContent({
           })()}
         </SheetContent>
       </Sheet>
+
+      {/* Remove contact confirmation */}
+      <AlertDialog
+        open={contactToRemove != null}
+        onOpenChange={(open) => !open && setContactToRemove(null)}
+      >
+        <AlertDialogContent
+          className="max-w-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove contact</AlertDialogTitle>
+            <AlertDialogDescription>
+              You're about to remove{" "}
+              <strong className="text-gray-900 dark:text-gray-100">
+                {contactToRemove?.name}
+              </strong>{" "}
+              from this case.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (contactToRemove) {
+                  setLocalContacts((prev) => prev.filter((c) => c.id !== contactToRemove.id));
+                  if (expandedContactId === contactToRemove.id) setExpandedContactId(null);
+                  setContactToRemove(null);
+                }
+              }}
+              className="bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Remove related case confirmation */}
+      <AlertDialog
+        open={relatedCaseToRemove != null}
+        onOpenChange={(open) => !open && setRelatedCaseToRemove(null)}
+      >
+        <AlertDialogContent
+          className="max-w-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove related case</AlertDialogTitle>
+            <AlertDialogDescription>
+              You're about to remove{" "}
+              <strong className="text-gray-900 dark:text-gray-100">
+                {relatedCaseToRemove}
+              </strong>{" "}
+              from this case. The link will be removed; the case itself is not deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (relatedCaseToRemove) {
+                  const newList = localRelatedCaseNumbers.filter((cn) => cn !== relatedCaseToRemove);
+                  setLocalRelatedCaseNumbers(newList);
+                  onUpdateCase?.({ relatedCases: newList });
+                  setRelatedCaseToRemove(null);
+                }
+              }}
+              className="bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
     </div>
   );
