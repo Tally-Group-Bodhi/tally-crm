@@ -19,6 +19,7 @@ import CallLogPanel from "@/components/crm/CallLogPanel";
 import {
   Dialog,
   DialogContent,
+  DialogClose,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -98,6 +99,8 @@ const STATUS_ICONS: Record<CaseStatus, string> = {
   Resolved: "task_alt",
   Closed: "check_circle",
 };
+
+const VISIBLE_CONTACTS_LIMIT = 10;
 
 function DataField({
   label,
@@ -210,10 +213,18 @@ export default function CaseDetailContent({
   const [localRelatedCaseNumbers, setLocalRelatedCaseNumbers] = React.useState<string[]>(() => relatedCaseNumbers);
   const [contactToRemove, setContactToRemove] = React.useState<Contact | null>(null);
   const [relatedCaseToRemove, setRelatedCaseToRemove] = React.useState<string | null>(null);
+  const [contactsViewAllOpen, setContactsViewAllOpen] = React.useState(false);
+  const expandedContactRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     setLocalContacts(account.contacts);
   }, [account.contacts, account.id]);
+
+  React.useEffect(() => {
+    if (expandedContactId && expandedContactRef.current) {
+      expandedContactRef.current.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }, [expandedContactId]);
 
   React.useEffect(() => {
     setLocalRelatedCaseNumbers(relatedCaseNumbers);
@@ -818,7 +829,7 @@ export default function CaseDetailContent({
             <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h3
-                  className="font-medium text-gray-900 dark:text-gray-100"
+                  className="font-bold text-gray-900 dark:text-gray-100"
                   style={{ fontSize: "var(--tally-font-size-sm)" }}
                 >
                   Contacts ({localContacts.length})
@@ -845,7 +856,13 @@ export default function CaseDetailContent({
                   </Button>
                 </div>
               </div>
-              <div className="divide-y divide-border dark:divide-gray-700">
+              <div className="space-y-2">
+                <div
+                  className={cn(
+                    "divide-y divide-border dark:divide-gray-700",
+                    localContacts.length > VISIBLE_CONTACTS_LIMIT && "max-h-[22rem] overflow-y-auto"
+                  )}
+                >
                 {localContacts.map((contact: Contact) => {
                   const isExpanded = expandedContactId === contact.id;
                   const initials = contact.name
@@ -881,7 +898,11 @@ export default function CaseDetailContent({
                     { label: "CREATE DATE", value: contact.createDate ?? "—" },
                   ];
                   return (
-                    <div key={contact.id} className="py-2.5 first:pt-0">
+                    <div
+                      key={contact.id}
+                      ref={isExpanded ? expandedContactRef : undefined}
+                      className="py-2.5 first:pt-0"
+                    >
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
@@ -1090,6 +1111,17 @@ export default function CaseDetailContent({
                     </div>
                   );
                 })}
+                </div>
+                {localContacts.length > VISIBLE_CONTACTS_LIMIT && (
+                  <button
+                    type="button"
+                    onClick={() => setContactsViewAllOpen(true)}
+                    className="underline text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
+                    style={{ fontSize: "var(--tally-font-size-sm)" }}
+                  >
+                    View All
+                  </button>
+                )}
               </div>
 
               {/* Add contact dialog */}
@@ -1163,11 +1195,74 @@ export default function CaseDetailContent({
                   </div>
                 </DialogContent>
               </Dialog>
+
+              {/* View All contacts dialog */}
+              <Dialog open={contactsViewAllOpen} onOpenChange={setContactsViewAllOpen}>
+                <DialogContent
+                  className="max-w-lg max-h-[85vh] flex flex-col gap-0 p-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DialogHeader className="border-b border-border px-4 py-3 dark:border-gray-700">
+                    <DialogTitle style={{ fontSize: "var(--tally-font-size-base)" }}>
+                      All contacts ({localContacts.length})
+                    </DialogTitle>
+                    <DialogClose />
+                  </DialogHeader>
+                  <div className="min-h-0 overflow-y-auto divide-y divide-border dark:divide-gray-700">
+                    {localContacts.map((c: Contact) => {
+                      const initials = c.name
+                        .split(/\s+/)
+                        .map((s) => s[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2);
+                      return (
+                        <div
+                          key={c.id}
+                          className="flex items-center gap-3 px-4 py-2.5"
+                        >
+                          <div
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2C365D] text-xs font-medium text-white dark:bg-[#3d4a6e]"
+                            style={{ fontSize: "var(--tally-font-size-xs)" }}
+                          >
+                            {initials}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p
+                                className="font-medium text-gray-900 dark:text-gray-100"
+                                style={{ fontSize: "var(--tally-font-size-sm)" }}
+                              >
+                                {c.name}
+                              </p>
+                              {c.isPrimary && (
+                                <Badge
+                                  variant="default"
+                                  className="px-1.5 py-0"
+                                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                >
+                                  Primary
+                                </Badge>
+                              )}
+                            </div>
+                            <p
+                              className="text-muted-foreground"
+                              style={{ fontSize: "var(--tally-font-size-xs)" }}
+                            >
+                              {c.role} · {c.email}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             <div className="rounded-lg border border-border bg-white p-4 lg:col-span-2 dark:border-gray-700 dark:bg-gray-900">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <h3
-                  className="font-medium text-gray-900 dark:text-gray-100"
+                  className="font-bold text-gray-900 dark:text-gray-100"
                   style={{ fontSize: "var(--tally-font-size-sm)" }}
                 >
                   Related Cases (

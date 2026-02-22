@@ -14,7 +14,16 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/AlertDialog/AlertDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from "@/components/Dialog/Dialog";
 import type { Attachment } from "@/types/crm";
+
+const VISIBLE_FILE_LIMIT = 10;
 
 interface DocumentAttachmentsProps {
   attachments: Attachment[];
@@ -50,6 +59,8 @@ export default function DocumentAttachments({
   const [isDragging, setIsDragging] = useState(false);
   const [showUploadArea, setShowUploadArea] = useState(false);
   const [attachmentToRemove, setAttachmentToRemove] = useState<Attachment | null>(null);
+  const [viewAllOpen, setViewAllOpen] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<Attachment | null>(null);
 
   const canUpload = Boolean(caseId && onUpload);
   const canRemove = Boolean(onRemove);
@@ -108,12 +119,88 @@ export default function DocumentAttachments({
       ? `/api/cases/${caseId}/attachments`
       : null;
 
+  const renderAttachmentRow = (att: Attachment) => {
+    const ftConfig = fileTypeIcons[att.type] ?? {
+      icon: "draft",
+      color: "text-gray-500",
+    };
+    const canDownload = downloadUrl && att.storagePath != null;
+    const canPreview = !!downloadUrl;
+    return (
+      <div
+        key={att.id}
+        className="flex items-center gap-3 px-3 py-2.5"
+      >
+        <Icon
+          name={ftConfig.icon}
+          size={20}
+          className={ftConfig.color}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+            {att.name}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {att.size} · {att.uploadedBy} · {att.uploadedDate}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
+          {editMode && canRemove && onRemove ? (
+            <button
+              type="button"
+              onClick={() => setAttachmentToRemove(att)}
+              className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
+              aria-label={`Remove ${att.name}`}
+            >
+              <Icon name="delete" size={18} />
+            </button>
+          ) : (
+            <>
+              {canPreview && (
+                <button
+                  type="button"
+                  onClick={() => setPreviewAttachment(att)}
+                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                  aria-label={`Preview ${att.name}`}
+                  title="Preview"
+                >
+                  <Icon name="visibility" size={18} />
+                </button>
+              )}
+              {canDownload ? (
+                <a
+                  href={`${downloadUrl}/${att.id}`}
+                  download={att.name}
+                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                  aria-label={`Download ${att.name}`}
+                >
+                  <Icon name="download" size={18} />
+                </a>
+              ) : (
+                <span
+                  className="rounded p-1 text-gray-300 dark:text-gray-600"
+                  title="Download not available"
+                  aria-hidden
+                >
+                  <Icon name="download" size={18} />
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={cn("space-y-3", className)}>
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+        <h3
+          className="font-bold text-gray-900 dark:text-gray-100"
+          style={{ fontSize: "var(--tally-font-size-sm)" }}
+        >
           Files ({attachments.length})
-        </p>
+        </h3>
         <div className="flex items-center gap-2">
           {canRemove && (
             <button
@@ -148,65 +235,109 @@ export default function DocumentAttachments({
       </div>
 
       {attachments.length > 0 && (
-        <div className="divide-y divide-border rounded-lg border border-border dark:divide-gray-700 dark:border-gray-700">
-          {attachments.map((att) => {
-            const ftConfig = fileTypeIcons[att.type] ?? {
-              icon: "draft",
-              color: "text-gray-500",
-            };
-            const canDownload =
-              downloadUrl && att.storagePath != null;
-
-            return (
-              <div
-                key={att.id}
-                className="flex items-center gap-3 px-3 py-2.5"
-              >
-                <Icon
-                  name={ftConfig.icon}
-                  size={20}
-                  className={ftConfig.color}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {att.name}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {att.size} · {att.uploadedBy} · {att.uploadedDate}
-                  </p>
-                </div>
-                {editMode && canRemove && onRemove ? (
-                  <button
-                    type="button"
-                    onClick={() => setAttachmentToRemove(att)}
-                    className="shrink-0 rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
-                    aria-label={`Remove ${att.name}`}
-                  >
-                    <Icon name="delete" size={18} />
-                  </button>
-                ) : canDownload ? (
-                  <a
-                    href={`${downloadUrl}/${att.id}`}
-                    download={att.name}
-                    className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300"
-                    aria-label={`Download ${att.name}`}
-                  >
-                    <Icon name="download" size={18} />
-                  </a>
-                ) : (
-                  <span
-                    className="shrink-0 rounded p-1 text-gray-300 dark:text-gray-600"
-                    title="Download not available"
-                    aria-hidden
-                  >
-                    <Icon name="download" size={18} />
-                  </span>
-                )}
-              </div>
-            );
-          })}
+        <div className="space-y-2">
+          <div
+            className={cn(
+              "divide-y divide-border rounded-lg border border-border dark:divide-gray-700 dark:border-gray-700",
+              attachments.length > VISIBLE_FILE_LIMIT && "max-h-[22rem] overflow-y-auto"
+            )}
+          >
+            {attachments.map((att) => renderAttachmentRow(att))}
+          </div>
+          {attachments.length > VISIBLE_FILE_LIMIT && (
+            <button
+              type="button"
+              onClick={() => setViewAllOpen(true)}
+              className="underline text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
+              style={{ fontSize: "var(--tally-font-size-sm)" }}
+            >
+              View All
+            </button>
+          )}
         </div>
       )}
+
+      {/* View All files modal */}
+      <Dialog open={viewAllOpen} onOpenChange={setViewAllOpen}>
+        <DialogContent
+          className="max-w-lg max-h-[85vh] flex flex-col gap-0 p-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DialogHeader className="border-b border-border px-4 py-3 dark:border-gray-700">
+            <DialogTitle style={{ fontSize: "var(--tally-font-size-base)" }}>
+              All files ({attachments.length})
+            </DialogTitle>
+            <DialogClose />
+          </DialogHeader>
+          <div className="min-h-0 overflow-y-auto divide-y divide-border dark:divide-gray-700">
+            {attachments.map((att) => renderAttachmentRow(att))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* File preview modal */}
+      <Dialog open={previewAttachment != null} onOpenChange={(open) => !open && setPreviewAttachment(null)}>
+        <DialogContent
+          className="max-w-4xl max-h-[90vh] flex flex-col gap-0 p-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DialogHeader className="flex shrink-0 border-b border-border px-4 py-3 dark:border-gray-700">
+            <DialogTitle className="truncate pr-8" style={{ fontSize: "var(--tally-font-size-base)" }}>
+              {previewAttachment?.name}
+            </DialogTitle>
+            <DialogClose />
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-auto bg-gray-100 dark:bg-gray-900 p-4">
+            {previewAttachment &&
+              (downloadUrl && previewAttachment.storagePath ? (
+                (() => {
+                  const previewUrl = `${downloadUrl}/${previewAttachment.id}`;
+                  if (previewAttachment.type === "image") {
+                    return (
+                      <img
+                        src={previewUrl}
+                        alt={previewAttachment.name}
+                        className="mx-auto max-h-[75vh] w-auto max-w-full object-contain"
+                      />
+                    );
+                  }
+                  if (previewAttachment.type === "pdf") {
+                    return (
+                      <iframe
+                        src={previewUrl}
+                        title={previewAttachment.name}
+                        className="h-[75vh] w-full border-0 rounded bg-white dark:bg-gray-800"
+                      />
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+                      <Icon name="draft" size={48} className="text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        Preview not available for this file type.
+                      </p>
+                      <a
+                        href={previewUrl}
+                        download={previewAttachment.name}
+                        className="inline-flex items-center gap-2 rounded-md bg-[#2C365D] px-4 py-2 text-sm font-medium text-white hover:bg-[#3d4a6e] dark:bg-[#7c8cb8] dark:hover:bg-[#8c9cc8]"
+                      >
+                        <Icon name="download" size={18} />
+                        Download
+                      </a>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+                  <Icon name="draft" size={48} className="text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Preview not available for this file.
+                  </p>
+                </div>
+              ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {canUpload && showUploadArea && (
         <div className="space-y-2">
