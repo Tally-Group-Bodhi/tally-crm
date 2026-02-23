@@ -74,7 +74,7 @@ const casesByType: { name: string; count: number }[] = (
 // Pipeline by stage
 const pipelineByStage: { name: string; value: number; count: number }[] = (
   [
-    "Discovery",
+    "Leads",
     "Qualification",
     "Proposal",
     "Negotiation",

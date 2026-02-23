@@ -20,7 +20,7 @@ import DocumentAttachments from "@/components/crm/DocumentAttachments";
 import type { PipelineStage, Contact, Quote } from "@/types/crm";
 
 const stageColors: Record<PipelineStage, string> = {
-  Discovery: "bg-gray-400",
+  Leads: "bg-gray-400",
   Qualification: "bg-[#0074C4]",
   Proposal: "bg-[#C53B00]",
   Negotiation: "bg-[#8B5CF6]",
@@ -29,7 +29,7 @@ const stageColors: Record<PipelineStage, string> = {
 };
 
 const STAGES: PipelineStage[] = [
-  "Discovery",
+  "Leads",
   "Qualification",
   "Proposal",
   "Negotiation",

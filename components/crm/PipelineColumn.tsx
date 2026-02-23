@@ -14,7 +14,7 @@ interface PipelineColumnProps {
 }
 
 const stageColors: Record<PipelineStage, string> = {
-  Discovery: "bg-gray-400",
+  Leads: "bg-gray-400",
   Qualification: "bg-[#0074C4]",
   Proposal: "bg-[#C53B00]",
   Negotiation: "bg-[#8B5CF6]",

@@ -193,7 +193,7 @@ export interface Attachment {
 // ── Pipeline / Opportunity ──────────────────────────────────────────────────
 
 export type PipelineStage =
-  | "Discovery"
+  | "Leads"
   | "Qualification"
   | "Proposal"
   | "Negotiation"

@@ -29,3 +29,4 @@ alwaysApply: true
 - Prefer small, focused edits. Avoid changing unrelated files.
 - Do not add new dependencies unless necessary; prefer existing packages and shadcn components.
 - Keep components and utilities in their existing directories (e.g. `components/`, `components/ui/`, `app/`, `lib/`).
+- **Case numbers**: Use `generateCaseNumber(accountName, sequence)` from `@/lib/case-number` when creating or generating case numbers (format: account-based prefix + year + sequence, e.g. `BBMC-2026-001847`). Do not hardcode a global prefix like `CS-`.

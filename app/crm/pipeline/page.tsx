@@ -21,7 +21,7 @@ import type { PipelineStage } from "@/types/crm";
 type ViewMode = "kanban" | "list";
 
 const STAGES: PipelineStage[] = [
-  "Discovery",
+  "Leads",
   "Qualification",
   "Proposal",
   "Negotiation",
@@ -30,7 +30,7 @@ const STAGES: PipelineStage[] = [
 ];
 
 const stageColors: Record<PipelineStage, string> = {
-  Discovery: "bg-gray-400",
+  Leads: "bg-gray-400",
   Qualification: "bg-[#0074C4]",
   Proposal: "bg-[#C53B00]",
   Negotiation: "bg-[#8B5CF6]",
