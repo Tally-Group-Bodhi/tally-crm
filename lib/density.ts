@@ -35,7 +35,7 @@ let _listeners: Listener[] = [];
 let _width: number | null = null; // null = SSR / not yet initialised
 
 function getServerSnapshot(): number {
-  return 1920; // Default to "normal" during SSR
+  return 1400; // Default to "normal" during SSR (1280–1919 range)
 }
 
 function getSnapshot(): number {
@@ -76,7 +76,7 @@ function handleResize() {
 
 /**
  * Returns the current viewport width, updating on resize.
- * SSR-safe (returns 1920 on the server).
+ * SSR-safe (returns 1400 on the server).
  */
 export function useViewportWidth(): number {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);

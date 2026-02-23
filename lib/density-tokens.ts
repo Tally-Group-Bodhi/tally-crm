@@ -60,7 +60,7 @@ export interface DensityTokenSet {
 /** Design tokens for each density mode. */
 export const densityTokens: Record<DensityMode, DensityTokenSet> = {
   comfortable: {
-    // 4K displays (≥ 2560 px)
+    // Full HD, QHD, 4K (1920 px and above)
     spacing: { xs: "4px", sm: "8px", md: "16px", lg: "24px", xl: "32px", xxl: "48px" },
     fontSize: { xs: "12px", sm: "14px", base: "16px", lg: "18px", xl: "20px", xxl: "24px", "3xl": "30px", "4xl": "36px" },
     lineHeight: { tight: "1.25", normal: "1.5", relaxed: "1.75" },
@@ -68,7 +68,7 @@ export const densityTokens: Record<DensityMode, DensityTokenSet> = {
     borderRadius: { sm: "4px", md: "8px", lg: "12px" },
   },
   normal: {
-    // Standard displays (1920 px – 2559 px)
+    // Typical laptops, smaller externals (1280 px – 1919 px)
     spacing: { xs: "3px", sm: "6px", md: "12px", lg: "16px", xl: "24px", xxl: "32px" },
     fontSize: { xs: "11px", sm: "13px", base: "14px", lg: "16px", xl: "18px", xxl: "20px", "3xl": "24px", "4xl": "30px" },
     lineHeight: { tight: "1.2", normal: "1.4", relaxed: "1.6" },
@@ -76,7 +76,7 @@ export const densityTokens: Record<DensityMode, DensityTokenSet> = {
     borderRadius: { sm: "3px", md: "6px", lg: "10px" },
   },
   compact: {
-    // Laptops (< 1920 px)
+    // Small laptops, constrained viewports (below 1280 px)
     spacing: { xs: "2px", sm: "4px", md: "8px", lg: "12px", xl: "16px", xxl: "24px" },
     fontSize: { xs: "10px", sm: "12px", base: "13px", lg: "14px", xl: "16px", xxl: "18px", "3xl": "20px", "4xl": "24px" },
     lineHeight: { tight: "1.15", normal: "1.35", relaxed: "1.5" },
@@ -95,9 +95,9 @@ export const densityTokens: Record<DensityMode, DensityTokenSet> = {
  * checked from largest to smallest.
  */
 export const densityBreakpoints: Record<DensityMode, number> = {
-  comfortable: 2560, // 2560px and above
-  normal: 1536,      // 1536px to 2559px
-  compact: 0,        // Below 1536px (default)
+  comfortable: 1920, // 1920px and above (Full HD, QHD, 4K)
+  normal: 1280,      // 1280px – 1919px (typical laptops, smaller externals)
+  compact: 0,        // Below 1280px (small laptops, constrained viewports)
 } as const;
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -109,9 +109,9 @@ export const densityBreakpoints: Record<DensityMode, number> = {
  *
  * @example
  * ```ts
- * densityFromWidth(2600); // "comfortable"
- * densityFromWidth(1920); // "normal"
- * densityFromWidth(1400); // "compact"
+ * densityFromWidth(1920); // "comfortable"
+ * densityFromWidth(1500); // "normal"
+ * densityFromWidth(1100); // "compact"
  * ```
  */
 export function densityFromWidth(width: number): DensityMode {
