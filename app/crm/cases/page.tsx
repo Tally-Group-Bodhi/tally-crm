@@ -155,6 +155,7 @@ export default function CaseListPage() {
   const [slaFilter, setSlaFilter] = React.useState<string[]>([]);
   const [sortField, setSortField] = React.useState<SortField>("createdDate");
   const [sortDir, setSortDir] = React.useState<SortDirection>("desc");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [contextMenu, setContextMenu] = React.useState<{
     open: boolean;
     x: number;
@@ -437,12 +438,16 @@ export default function CaseListPage() {
       <div className={cn("mb-density-lg flex flex-col gap-density-md", viewMode === "tab" && "shrink-0")}>
         {/* Critical alert: breached SLA — show above search row when any case has breached */}
         {breachedCount > 0 && (
-          <Alert variant="error" className="flex flex-row flex-wrap items-center justify-between gap-2 py-3">
+          <Alert variant="error" className="flex flex-row flex-wrap items-center justify-between gap-2 py-1.5">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white" aria-hidden>
-                <Icon name="warning" size={20} className="text-black" />
+              <span
+                className="material-symbols-filled inline-flex shrink-0 items-center justify-center leading-none"
+                style={{ fontSize: 18, width: 18, height: 18 }}
+                aria-hidden
+              >
+                error
               </span>
-              <AlertTitle className="mb-0" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+              <AlertTitle className="!mb-0 leading-tight" style={{ fontSize: "var(--tally-font-size-sm)" }}>
                 {breachedCount} case{breachedCount !== 1 ? "s" : ""} {breachedCount !== 1 ? "have" : "has"} breached SLA
               </AlertTitle>
             </div>
@@ -457,28 +462,30 @@ export default function CaseListPage() {
           </Alert>
         )}
 
-        {/* List view, account filter, search + view toggle */}
+        {/* Filters button, search + view toggle */}
         <div className="flex flex-wrap items-center gap-density-md">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-density-md">
-          <div className="relative min-w-[140px]">
-            <select
-              value={listView}
-              onChange={(e) => setListView(e.target.value as ListViewId)}
-              className="w-full cursor-pointer appearance-none rounded-density-md border border-border bg-white py-2 pl-3 pr-9 font-medium transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-100"
-              style={{ fontSize: "var(--tally-font-size-sm)" }}
-            >
-              {LIST_VIEWS.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
-            <Icon
-              name="expand_more"
-              size={16}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-          </div>
+          <button
+            type="button"
+            onClick={() => setFiltersOpen((prev) => !prev)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-density-md border border-border bg-white px-3 py-2 font-medium transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+              filtersOpen ||
+                listView !== "all" ||
+                accountFilter.length > 0 ||
+                statusFilter.length > 0 ||
+                priorityFilter.length > 0 ||
+                typeFilter.length > 0 ||
+                ownerFilter.length > 0 ||
+                slaFilter.length > 0
+                ? "border-[#006180] bg-[#E6F7FF] text-[#006180] dark:border-[#80E0FF] dark:bg-[#006180]/20 dark:text-[#80E0FF]"
+                : "hover:border-[#006180] hover:bg-[#E6F7FF] hover:text-[#006180] dark:hover:border-[#80E0FF] dark:hover:bg-[#006180]/20 dark:hover:text-[#80E0FF]"
+            )}
+            style={{ fontSize: "var(--tally-font-size-sm)" }}
+          >
+            <Icon name="filter_list" size="var(--tally-icon-size-sm)" />
+            Filters
+          </button>
 
           <div className="relative min-w-[120px] flex-1">
             <Icon
@@ -548,14 +555,50 @@ export default function CaseListPage() {
         </div>
         </div>
 
-        {/* Filter chips: Account, Type, Status, Priority, SLA, Owner */}
+        {/* Filter section: list view + chips — shown when Filters button is toggled */}
+        {filtersOpen && (
         <div className="flex flex-wrap items-center gap-2">
-          <span
-            className="font-medium text-muted-foreground"
-            style={{ fontSize: "var(--tally-font-size-xs)" }}
-          >
-            FILTER
-          </span>
+          <Popover>
+            <PopoverTrigger
+              type="button"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 font-medium transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+                listView !== "all"
+                  ? "border-[#006180] bg-[#E6F7FF] text-[#006180] dark:border-[#80E0FF] dark:bg-[#006180]/20 dark:text-[#80E0FF]"
+                  : "hover:border-[#006180] hover:bg-[#E6F7FF] hover:text-[#006180] dark:hover:border-[#80E0FF] dark:hover:bg-[#006180]/20 dark:hover:text-[#80E0FF]"
+              )}
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
+            >
+              {LIST_VIEWS.find((v) => v.id === listView)?.label ?? "All Cases"}
+              <Icon name="expand_more" size={14} className="shrink-0" />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="min-w-[180px] p-1">
+              <button
+                type="button"
+                onClick={() => setListView("all")}
+                className="w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Clear
+              </button>
+              {LIST_VIEWS.map((v) => {
+                const selected = listView === v.id;
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setListView(v.id)}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
+                      selected ? "bg-[#E6F7FF] text-[#006180] dark:bg-[#006180]/20 dark:text-[#80E0FF]" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <span className={cn("min-w-0 truncate", selected ? "font-medium" : "")}>{v.label}</span>
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
           <Popover>
             <PopoverTrigger
               type="button"
@@ -821,6 +864,7 @@ export default function CaseListPage() {
             Clear all
           </button>
         </div>
+        )}
       </div>
 
       {/* Tab view (sidebar + case detail) — stays inside viewport; scroll only inside this box */}

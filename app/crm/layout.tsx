@@ -310,7 +310,7 @@ export default function CRMLayout({
         />
 
         {/* ── Main content ─────────────────────────────────────────── */}
-        <main className="flex min-h-0 min-w-0 flex-1">
+        <main className="flex min-h-0 min-w-0 flex-1 bg-gradient-to-br from-sky-50/70 via-background to-blue-50/50 dark:from-sky-950/25 dark:via-background dark:to-blue-950/20">
           <CaseLinksOverridesProvider>{children}</CaseLinksOverridesProvider>
         </main>
       </div>

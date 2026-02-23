@@ -124,3 +124,19 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Filled variant (same font, FILL axis = 1) */
+.material-symbols-filled {
+  font-family: "Material Symbols Outlined";
+  font-weight: 400;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  font-variation-settings: "FILL" 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
