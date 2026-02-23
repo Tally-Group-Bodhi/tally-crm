@@ -851,6 +851,8 @@ export default function CaseListPage() {
           <button
             type="button"
             onClick={() => {
+              setListView("all");
+              setAccountFilter([]);
               setStatusFilter([]);
               setPriorityFilter([]);
               setTypeFilter([]);
