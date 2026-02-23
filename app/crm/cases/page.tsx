@@ -47,12 +47,28 @@ const CASE_STATUSES: CaseStatus[] = [
   "Closed",
 ];
 
+/** Status dot colours aligned with StatusBadge (info, warning, success, default, outline dot). */
 const statusColors: Record<CaseStatus, string> = {
   New: "bg-blue-500",
   "In Progress": "bg-[#0074C4]",
   Pending: "bg-[#C53B00]",
   Resolved: "bg-[#008000]",
-  Closed: "bg-gray-400",
+  Closed: "bg-[#2C365D]",
+};
+
+/** Priority dot colours aligned with Badge variants (error, warning, info, outline). */
+const priorityFilterColors: Record<CasePriority, string> = {
+  Critical: "bg-[#C40000]",
+  High: "bg-[#C53B00]",
+  Medium: "bg-[#0074C4]",
+  Low: "bg-[#2C365D]",
+};
+
+/** SLA dot colours aligned with SLAIndicator/Badge (success, warning, error). */
+const slaFilterColors: Record<string, string> = {
+  "On Track": "bg-[#008000]",
+  "At Risk": "bg-[#C53B00]",
+  Breached: "bg-[#C40000]",
 };
 
 type ListViewId =
@@ -641,6 +657,7 @@ export default function CaseListPage() {
                     )}
                   >
                     {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <span className={cn("h-2 w-2 shrink-0 rounded-full", statusColors[s])} aria-hidden />
                     <span className={cn(selected ? "font-medium" : "")}>{s}</span>
                   </button>
                 );
@@ -682,6 +699,7 @@ export default function CaseListPage() {
                     )}
                   >
                     {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <span className={cn("h-2 w-2 shrink-0 rounded-full", priorityFilterColors[p])} aria-hidden />
                     <span className={cn(selected ? "font-medium" : "")}>{p}</span>
                   </button>
                 );
@@ -723,6 +741,7 @@ export default function CaseListPage() {
                     )}
                   >
                     {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <span className={cn("h-2 w-2 shrink-0 rounded-full", slaFilterColors[s])} aria-hidden />
                     <span className={cn(selected ? "font-medium" : "")}>{s}</span>
                   </button>
                 );
