@@ -31,8 +31,9 @@ model Case {
   communications   String?  // JSON array of Communication
   activities       String?  // JSON array of Activity
   attachments      String?  // JSON array of Attachment
-  relatedCases     String?  // JSON array of case numbers (string[])
-  pendingReason    String?  // "Customer" | "3rd Party" | "On Hold" when status is Pending
+  relatedCases       String?  // JSON array of case numbers (string[])
+  pendingReason      String?  // "Customer" | "3rd Party" | "On Hold" when status is Pending
+  descriptionHistory String?  // JSON array of { description, updatedAt } for edit log
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

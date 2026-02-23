@@ -136,6 +136,8 @@ export interface CaseItem {
   relatedCases: string[];
   /** When status is Pending, reason for pending (used for Kanban filter) */
   pendingReason?: "Customer" | "3rd Party" | "On Hold";
+  /** Edit log: previous description values when description is updated (saved with updatedAt) */
+  descriptionHistory?: { description: string; updatedAt: string }[];
 }
 
 // ── Communication ───────────────────────────────────────────────────────────

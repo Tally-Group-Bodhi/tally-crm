@@ -17,13 +17,23 @@ import Button from "@/components/Button/Button";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { mockCases } from "@/lib/mock-data/cases";
+import { mergeMockWithSession, setSessionCase } from "@/lib/session-cases";
 import { getAccountById } from "@/lib/mock-data/accounts";
 import SLAIndicator from "@/components/crm/SLAIndicator";
 import CaseListSidebar from "@/components/crm/CaseListSidebar";
 import AccountContextPanel from "@/components/crm/AccountContextPanel";
 import CaseDetailContent from "@/components/crm/CaseDetailContent";
 import NewCaseModal from "@/components/crm/NewCaseModal";
+import { Alert, AlertTitle } from "@/components/Alert/Alert";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/Popover/Popover";
 import type { CaseItem, CasePriority, CaseStatus } from "@/types/crm";
+
+const CASE_PRIORITIES: CasePriority[] = ["Critical", "High", "Medium", "Low"];
+const SLA_OPTIONS = ["On Track", "At Risk", "Breached"] as const;
 
 const useDatabase = () =>
   typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_DATABASE === "true";
@@ -105,7 +115,7 @@ export default function CaseListPage() {
   const [tabViewCallLogPanelOpen, setTabViewCallLogPanelOpen] = React.useState(false);
   const [listView, setListView] = React.useState<ListViewId>("all");
   const kanbanRef = React.useRef<HTMLDivElement>(null);
-  const [cases, setCases] = React.useState(mockCases);
+  const [cases, setCases] = React.useState(() => mergeMockWithSession(mockCases));
   const [modalOpen, setModalOpen] = React.useState(false);
 
   const createCaseViaApi = React.useCallback(
@@ -122,6 +132,11 @@ export default function CaseListPage() {
   );
   const [accountFilter, setAccountFilter] = React.useState("");
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<CaseStatus[]>([]);
+  const [priorityFilter, setPriorityFilter] = React.useState<CasePriority[]>([]);
+  const [typeFilter, setTypeFilter] = React.useState<string[]>([]);
+  const [ownerFilter, setOwnerFilter] = React.useState<string[]>([]);
+  const [slaFilter, setSlaFilter] = React.useState<string[]>([]);
   const [sortField, setSortField] = React.useState<SortField>("createdDate");
   const [sortDir, setSortDir] = React.useState<SortDirection>("desc");
   const [contextMenu, setContextMenu] = React.useState<{
@@ -177,24 +192,40 @@ export default function CaseListPage() {
   );
 
   const accountNames = React.useMemo(
-    () => Array.from(new Set(mockCases.map((c) => c.accountName))).sort(),
-    []
+    () => Array.from(new Set(cases.map((c) => c.accountName))).sort(),
+    [cases]
+  );
+  const typeOptions = React.useMemo(
+    () => Array.from(new Set(cases.map((c) => c.type))).sort(),
+    [cases]
+  );
+  const ownerOptions = React.useMemo(
+    () => Array.from(new Set(cases.map((c) => c.owner))).sort(),
+    [cases]
   );
 
   const handleDrop = (caseId: string, newStatus: CaseStatus) => {
-    setCases((prev) =>
-      prev.map((c) => (c.id === caseId ? { ...c, status: newStatus } : c))
-    );
+    setCases((prev) => {
+      const next = prev.map((c) =>
+        c.id === caseId ? { ...c, status: newStatus } : c
+      );
+      const updated = next.find((c) => c.id === caseId);
+      if (updated) setSessionCase(updated);
+      return next;
+    });
   };
 
   const handleTabViewUpdateCase = React.useCallback(
     (payload: Partial<CaseItem>) => {
       if (!tabViewSelectedCaseId) return;
-      setCases((prev) =>
-        prev.map((c) =>
+      setCases((prev) => {
+        const next = prev.map((c) =>
           c.id === tabViewSelectedCaseId ? { ...c, ...payload } : c
-        )
-      );
+        );
+        const updated = next.find((c) => c.id === tabViewSelectedCaseId);
+        if (updated) setSessionCase(updated);
+        return next;
+      });
     },
     [tabViewSelectedCaseId]
   );
@@ -240,6 +271,13 @@ export default function CaseListPage() {
       result = result.filter((c) => c.accountName === accountFilter);
     }
 
+    // Filter chips: Status, Priority, Type, Owner, SLA (multi-select)
+    if (statusFilter.length > 0) result = result.filter((c) => statusFilter.includes(c.status));
+    if (priorityFilter.length > 0) result = result.filter((c) => priorityFilter.includes(c.priority));
+    if (typeFilter.length > 0) result = result.filter((c) => typeFilter.includes(c.type));
+    if (ownerFilter.length > 0) result = result.filter((c) => ownerFilter.includes(c.owner));
+    if (slaFilter.length > 0) result = result.filter((c) => slaFilter.includes(c.slaStatus));
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -275,7 +313,7 @@ export default function CaseListPage() {
     });
 
     return result;
-  }, [cases, listView, accountFilter, searchQuery, sortField, sortDir]);
+  }, [cases, listView, accountFilter, searchQuery, statusFilter, priorityFilter, typeFilter, ownerFilter, slaFilter, sortField, sortDir]);
 
   // In Tab view, keep selection in sync with filtered list (e.g. when filters change)
   React.useEffect(() => {
@@ -293,6 +331,13 @@ export default function CaseListPage() {
     }
     return byStatus;
   }, [filtered]);
+
+  const breachedCount = React.useMemo(
+    () => cases.filter((c) => c.slaStatus === "Breached").length,
+    [cases]
+  );
+  const showingOnlyBreached =
+    slaFilter.length === 1 && slaFilter[0] === "Breached";
 
   const renderSortHeader = (field: SortField, label: string, className?: string) => (
     <TableHead key={field} className={className}>
@@ -377,8 +422,31 @@ export default function CaseListPage() {
       </div>
 
       {/* Filters */}
-      <div className={cn("mb-density-lg flex flex-wrap items-center gap-density-md", viewMode === "tab" && "shrink-0")}>
-        {/* Left: list view, account filter, search (search grows) */}
+      <div className={cn("mb-density-lg flex flex-col gap-density-md", viewMode === "tab" && "shrink-0")}>
+        {/* Critical alert: breached SLA — show above search row when any case has breached */}
+        {breachedCount > 0 && (
+          <Alert variant="error" className="flex flex-row flex-wrap items-center justify-between gap-2 py-3">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white" aria-hidden>
+                <Icon name="warning" size={20} className="text-black" />
+              </span>
+              <AlertTitle className="mb-0" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                {breachedCount} case{breachedCount !== 1 ? "s" : ""} {breachedCount !== 1 ? "have" : "has"} breached SLA
+              </AlertTitle>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSlaFilter(showingOnlyBreached ? [] : ["Breached"])}
+              className="shrink-0 font-medium underline hover:no-underline"
+              style={{ fontSize: "var(--tally-font-size-sm)" }}
+            >
+              {showingOnlyBreached ? "Clear filter" : "Show breached cases"}
+            </button>
+          </Alert>
+        )}
+
+        {/* List view, account filter, search + view toggle */}
+        <div className="flex flex-wrap items-center gap-density-md">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-density-md">
           <div className="relative min-w-[140px]">
             <select
@@ -485,6 +553,237 @@ export default function CaseListPage() {
           >
             <Icon name="tab" size="var(--tally-icon-size-sm)" className="mr-1" />
             Tab
+          </button>
+        </div>
+        </div>
+
+        {/* Filter chips: Type, Status, Priority, SLA, Owner (order matches table row) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className="font-medium text-muted-foreground"
+            style={{ fontSize: "var(--tally-font-size-xs)" }}
+          >
+            FILTER
+          </span>
+          <Popover>
+            <PopoverTrigger
+              type="button"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 font-medium transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+                typeFilter.length > 0
+                  ? "border-[#006180] bg-[#E6F7FF] text-[#006180] dark:border-[#80E0FF] dark:bg-[#006180]/20 dark:text-[#80E0FF]"
+                  : "hover:border-[#006180] hover:bg-[#E6F7FF] hover:text-[#006180] dark:hover:border-[#80E0FF] dark:hover:bg-[#006180]/20 dark:hover:text-[#80E0FF]"
+              )}
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
+            >
+              {typeFilter.length === 0 ? "Type" : `Type (${typeFilter.length})`}
+              <Icon name="expand_more" size={14} className="shrink-0" />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="min-w-[180px] p-1">
+              <button
+                type="button"
+                onClick={() => setTypeFilter([])}
+                className="w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Clear
+              </button>
+              {typeOptions.map((t) => {
+                const selected = typeFilter.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTypeFilter((prev) => (selected ? prev.filter((x) => x !== t) : [...prev, t]))}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
+                      selected ? "bg-[#E6F7FF] text-[#006180] dark:bg-[#006180]/20 dark:text-[#80E0FF]" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <span className={cn(selected ? "font-medium" : "")}>{t}</span>
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger
+              type="button"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 font-medium transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+                statusFilter.length > 0
+                  ? "border-[#006180] bg-[#E6F7FF] text-[#006180] dark:border-[#80E0FF] dark:bg-[#006180]/20 dark:text-[#80E0FF]"
+                  : "hover:border-[#006180] hover:bg-[#E6F7FF] hover:text-[#006180] dark:hover:border-[#80E0FF] dark:hover:bg-[#006180]/20 dark:hover:text-[#80E0FF]"
+              )}
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
+            >
+              {statusFilter.length === 0 ? "Status" : `Status (${statusFilter.length})`}
+              <Icon name="expand_more" size={14} className="shrink-0" />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="min-w-[160px] p-1">
+              <button
+                type="button"
+                onClick={() => setStatusFilter([])}
+                className="w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Clear
+              </button>
+              {CASE_STATUSES.map((s) => {
+                const selected = statusFilter.includes(s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatusFilter((prev) => (selected ? prev.filter((x) => x !== s) : [...prev, s]))}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
+                      selected ? "bg-[#E6F7FF] text-[#006180] dark:bg-[#006180]/20 dark:text-[#80E0FF]" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <span className={cn(selected ? "font-medium" : "")}>{s}</span>
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger
+              type="button"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 font-medium transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+                priorityFilter.length > 0
+                  ? "border-[#006180] bg-[#E6F7FF] text-[#006180] dark:border-[#80E0FF] dark:bg-[#006180]/20 dark:text-[#80E0FF]"
+                  : "hover:border-[#006180] hover:bg-[#E6F7FF] hover:text-[#006180] dark:hover:border-[#80E0FF] dark:hover:bg-[#006180]/20 dark:hover:text-[#80E0FF]"
+              )}
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
+            >
+              {priorityFilter.length === 0 ? "Priority" : `Priority (${priorityFilter.length})`}
+              <Icon name="expand_more" size={14} className="shrink-0" />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="min-w-[160px] p-1">
+              <button
+                type="button"
+                onClick={() => setPriorityFilter([])}
+                className="w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Clear
+              </button>
+              {CASE_PRIORITIES.map((p) => {
+                const selected = priorityFilter.includes(p);
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPriorityFilter((prev) => (selected ? prev.filter((x) => x !== p) : [...prev, p]))}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
+                      selected ? "bg-[#E6F7FF] text-[#006180] dark:bg-[#006180]/20 dark:text-[#80E0FF]" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <span className={cn(selected ? "font-medium" : "")}>{p}</span>
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger
+              type="button"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 font-medium transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+                slaFilter.length > 0
+                  ? "border-[#006180] bg-[#E6F7FF] text-[#006180] dark:border-[#80E0FF] dark:bg-[#006180]/20 dark:text-[#80E0FF]"
+                  : "hover:border-[#006180] hover:bg-[#E6F7FF] hover:text-[#006180] dark:hover:border-[#80E0FF] dark:hover:bg-[#006180]/20 dark:hover:text-[#80E0FF]"
+              )}
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
+            >
+              {slaFilter.length === 0 ? "SLA" : `SLA (${slaFilter.length})`}
+              <Icon name="expand_more" size={14} className="shrink-0" />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="min-w-[140px] p-1">
+              <button
+                type="button"
+                onClick={() => setSlaFilter([])}
+                className="w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Clear
+              </button>
+              {SLA_OPTIONS.map((s) => {
+                const selected = slaFilter.includes(s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSlaFilter((prev) => (selected ? prev.filter((x) => x !== s) : [...prev, s]))}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
+                      selected ? "bg-[#E6F7FF] text-[#006180] dark:bg-[#006180]/20 dark:text-[#80E0FF]" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <span className={cn(selected ? "font-medium" : "")}>{s}</span>
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger
+              type="button"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 font-medium transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+                ownerFilter.length > 0
+                  ? "border-[#006180] bg-[#E6F7FF] text-[#006180] dark:border-[#80E0FF] dark:bg-[#006180]/20 dark:text-[#80E0FF]"
+                  : "hover:border-[#006180] hover:bg-[#E6F7FF] hover:text-[#006180] dark:hover:border-[#80E0FF] dark:hover:bg-[#006180]/20 dark:hover:text-[#80E0FF]"
+              )}
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
+            >
+              {ownerFilter.length === 0 ? "Owner" : `Owner (${ownerFilter.length})`}
+              <Icon name="expand_more" size={14} className="shrink-0" />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="min-w-[180px] p-1">
+              <button
+                type="button"
+                onClick={() => setOwnerFilter([])}
+                className="w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Clear
+              </button>
+              {ownerOptions.map((o) => {
+                const selected = ownerFilter.includes(o);
+                return (
+                  <button
+                    key={o}
+                    type="button"
+                    onClick={() => setOwnerFilter((prev) => (selected ? prev.filter((x) => x !== o) : [...prev, o]))}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
+                      selected ? "bg-[#E6F7FF] text-[#006180] dark:bg-[#006180]/20 dark:text-[#80E0FF]" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <span className={cn(selected ? "font-medium" : "")}>{o}</span>
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter([]);
+              setPriorityFilter([]);
+              setTypeFilter([]);
+              setOwnerFilter([]);
+              setSlaFilter([]);
+            }}
+            className="inline-flex items-baseline underline text-muted-foreground hover:text-[#006180] dark:hover:text-[#80E0FF] leading-none py-0"
+            style={{ fontSize: "var(--tally-font-size-xs)" }}
+            title="Clear all filters"
+          >
+            Clear all
           </button>
         </div>
       </div>
@@ -710,6 +1009,7 @@ export default function CaseListPage() {
             if (useDb && newCase?.id) {
               router.push(`/crm/cases/${newCase.id}`);
             } else {
+              if (newCase?.id) setSessionCase(newCase);
               setCases((prev) => [newCase, ...prev]);
             }
           }}

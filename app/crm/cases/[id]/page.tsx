@@ -2,7 +2,8 @@
 
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getCaseById, mockCases } from "@/lib/mock-data/cases";
+import { getCaseById } from "@/lib/mock-data/cases";
+import { getSessionCase, setSessionCase } from "@/lib/session-cases";
 import { getAccountById } from "@/lib/mock-data/accounts";
 import { useCaseLinksOverrides } from "@/lib/case-links-overrides";
 import AccountContextPanel from "@/components/crm/AccountContextPanel";
@@ -29,8 +30,9 @@ export default function CaseDetailPage() {
 
   React.useEffect(() => {
     if (!useDb) {
-      const c = getCaseById(caseId) ?? mockCases[0];
-      setCaseItem(c);
+      const found = getSessionCase(caseId) ?? getCaseById(caseId);
+      setCaseItem(found ?? null);
+      setNotFound(!found);
       setLoading(false);
       return;
     }
@@ -70,7 +72,11 @@ export default function CaseDetailPage() {
           if (r.ok) return r.json().then(setCaseItem);
         });
       }
-      setCaseItem((prev) => (prev ? { ...prev, ...payload } : null));
+      setCaseItem((prev) => {
+        const next = prev ? { ...prev, ...payload } : null;
+        if (next) setSessionCase(next);
+        return next;
+      });
       return Promise.resolve();
     },
     [useDb, caseId]

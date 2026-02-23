@@ -63,7 +63,7 @@ import {
 } from "@/components/Table/Table";
 import { getCaseByCaseNumber } from "@/lib/mock-data/cases";
 import { getAccountById, getOrgById, getAccountsByOrgId } from "@/lib/mock-data/accounts";
-import type { Account, CaseItem, CasePriority, CaseStatus, Communication, Contact } from "@/types/crm";
+import type { Account, Activity, CaseItem, CasePriority, CaseStatus, Communication, Contact } from "@/types/crm";
 
 const priorityVariant: Record<CasePriority, "error" | "warning" | "info" | "outline" | "yellow"> = {
   Critical: "error",
@@ -215,6 +215,8 @@ export default function CaseDetailContent({
   const [relatedCaseToRemove, setRelatedCaseToRemove] = React.useState<string | null>(null);
   const [contactsViewAllOpen, setContactsViewAllOpen] = React.useState(false);
   const expandedContactRef = React.useRef<HTMLDivElement>(null);
+  const [isEditingDescription, setIsEditingDescription] = React.useState(false);
+  const [draftDescription, setDraftDescription] = React.useState("");
 
   React.useEffect(() => {
     setLocalContacts(account.contacts);
@@ -544,21 +546,114 @@ export default function CaseDetailContent({
               </div>
             </div>
             <div className="rounded-lg border border-border bg-white p-4 lg:col-span-2 dark:border-gray-700 dark:bg-gray-900">
-              <h3
-                className="mb-3 font-bold text-gray-900 dark:text-gray-100"
-                style={{ fontSize: "var(--tally-font-size-sm)" }}
-              >
-                Description
-              </h3>
-              <p
-                className="leading-relaxed text-gray-700 dark:text-gray-300"
-                style={{
-                  fontSize: "var(--tally-font-size-sm)",
-                  lineHeight: "var(--tally-line-height-relaxed)",
-                }}
-              >
-                {caseItem.description}
-              </p>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3
+                  className="font-bold text-gray-900 dark:text-gray-100"
+                  style={{ fontSize: "var(--tally-font-size-sm)" }}
+                >
+                  Description
+                </h3>
+                <div className="flex shrink-0 items-baseline gap-2">
+                  {onUpdateCase && !isEditingDescription && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraftDescription(caseItem.description);
+                          setIsEditingDescription(true);
+                        }}
+                        className="inline-flex items-baseline underline text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8] leading-none py-0"
+                        style={{ fontSize: "var(--tally-font-size-xs)" }}
+                        title="Edit description"
+                      >
+                        Edit
+                      </button>
+                    </>
+                  )}
+                  {onUpdateCase && isEditingDescription && (
+                    <div className="flex items-baseline gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditingDescription(false);
+                          setDraftDescription("");
+                        }}
+                        className="inline-flex items-baseline underline text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8] leading-none py-0"
+                        style={{ fontSize: "var(--tally-font-size-xs)" }}
+                        title="Cancel editing"
+                      >
+                        Cancel
+                      </button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const prevDescription = caseItem.description;
+                          const newDescription = draftDescription.trim() || prevDescription;
+                          const changed = newDescription !== prevDescription;
+                          const nextHistory = changed
+                            ? [
+                                ...(caseItem.descriptionHistory ?? []),
+                                { description: prevDescription, updatedAt: new Date().toISOString() },
+                              ]
+                            : (caseItem.descriptionHistory ?? []);
+                          const descriptionActivity: Activity | undefined = changed
+                            ? {
+                                id: `act-desc-${Date.now()}`,
+                                type: "Comment",
+                                description: "Description updated",
+                                user: caseItem.owner,
+                                timestamp: new Date().toLocaleString("en-AU", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }),
+                              }
+                            : undefined;
+                          Promise.resolve(
+                            onUpdateCase({
+                              description: newDescription,
+                              ...(changed && { descriptionHistory: nextHistory }),
+                              ...(descriptionActivity && {
+                                activities: [descriptionActivity, ...(caseItem.activities ?? [])],
+                              }),
+                            })
+                          ).then(() => {
+                            setIsEditingDescription(false);
+                            setDraftDescription("");
+                          });
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {isEditingDescription ? (
+                <textarea
+                  value={draftDescription}
+                  onChange={(e) => setDraftDescription(e.target.value)}
+                  className="w-full min-h-[120px] rounded-density-md border border-border bg-white px-3 py-2 outline-none placeholder:text-muted-foreground focus:border-[#2C365D] focus:ring-1 focus:ring-[#2C365D] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                  style={{
+                    fontSize: "var(--tally-font-size-sm)",
+                    lineHeight: "var(--tally-line-height-relaxed)",
+                  }}
+                  placeholder="Case description..."
+                  autoFocus
+                />
+              ) : (
+                <p
+                  className="leading-relaxed text-gray-700 dark:text-gray-300"
+                  style={{
+                    fontSize: "var(--tally-font-size-sm)",
+                    lineHeight: "var(--tally-line-height-relaxed)",
+                  }}
+                >
+                  {caseItem.description || "—"}
+                </p>
+              )}
             </div>
             {caseItem.resolution && (
               <div className="rounded-lg border border-[#008000]/20 bg-[#008000]/5 p-4 lg:col-span-2 dark:border-green-800/30 dark:bg-green-950/20">

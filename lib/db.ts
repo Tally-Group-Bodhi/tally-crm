@@ -51,6 +51,7 @@ export function prismaCaseToCaseItem(row: {
   attachments: string | null;
   relatedCases: string | null;
   pendingReason: string | null;
+  descriptionHistory: string | null;
 }): CaseItem {
   return {
     id: row.id,
@@ -75,6 +76,7 @@ export function prismaCaseToCaseItem(row: {
     attachments: row.attachments ? JSON.parse(row.attachments) : [],
     relatedCases: row.relatedCases ? JSON.parse(row.relatedCases) : [],
     ...(row.pendingReason && { pendingReason: row.pendingReason as CaseItem["pendingReason"] }),
+    ...(row.descriptionHistory && { descriptionHistory: JSON.parse(row.descriptionHistory) as CaseItem["descriptionHistory"] }),
   };
 }
 
@@ -102,6 +104,7 @@ export function caseItemToPrismaPayload(item: CaseItem) {
     attachments: JSON.stringify(item.attachments ?? []),
     relatedCases: JSON.stringify(item.relatedCases ?? []),
     pendingReason: item.pendingReason ?? null,
+    descriptionHistory: item.descriptionHistory ? JSON.stringify(item.descriptionHistory) : null,
   };
 }
 
@@ -122,5 +125,6 @@ export function caseItemPartialToPrismaUpdate(
   if (item.activities !== undefined) out.activities = JSON.stringify(item.activities);
   if (item.attachments !== undefined) out.attachments = JSON.stringify(item.attachments);
   if (item.relatedCases !== undefined) out.relatedCases = JSON.stringify(item.relatedCases);
+  if (item.descriptionHistory !== undefined) out.descriptionHistory = item.descriptionHistory ? JSON.stringify(item.descriptionHistory) : null;
   return out;
 }
