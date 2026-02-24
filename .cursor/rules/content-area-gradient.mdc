@@ -1,0 +1,34 @@
+---
+description: Subtle light blue gradient for main content areas (shared Tally design system)
+alwaysApply: false
+---
+
+# Main content area gradient
+
+Use this gradient behind the **main content area** (the region that contains list/dashboard/detail pages, typically the `<main>` or primary content wrapper in the app layout). Shared across Tally projects for consistency.
+
+## Tailwind classes
+
+Apply to the main content wrapper (e.g. `<main>` in the app or section layout):
+
+```
+bg-gradient-to-br from-sky-50/70 via-background to-blue-50/50 dark:from-sky-950/25 dark:via-background dark:to-blue-950/20
+```
+
+- **Light:** Diagonal (bottom-right) from soft sky, through theme background, to soft blue.
+- **Dark:** Same direction with subtle dark blue tint.
+
+## Where to apply
+
+- The element that wraps all primary content (e.g. next to sidebar/nav): usually `<main className="...">` or the inner flex child that scrolls.
+- Do **not** apply to the root `<body>` or full-page wrapper; keep it scoped to the main content region so header/sidebar stay solid.
+
+## Copying to other Tally projects
+
+In the project’s layout (e.g. `app/(dashboard)/layout.tsx` or `app/crm/layout.tsx`), add the classes above to the main content wrapper. Example:
+
+```tsx
+<main className="flex min-h-0 min-w-0 flex-1 bg-gradient-to-br from-sky-50/70 via-background to-blue-50/50 dark:from-sky-950/25 dark:via-background dark:to-blue-950/20">
+  {children}
+</main>
+```
