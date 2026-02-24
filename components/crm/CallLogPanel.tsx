@@ -201,31 +201,31 @@ export default function CallLogPanel({
 
   const formContent = (
     <>
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         <button
           type="button"
           onClick={() => setDirection("Outbound")}
           className={cn(
-            "flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+            "flex flex-1 items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-sm font-medium transition-colors",
             direction === "Outbound"
               ? "border-[#2C365D] bg-[#2C365D] text-white dark:border-[#7c8cb8] dark:bg-[#7c8cb8]"
               : "border-border bg-white text-muted-foreground hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700"
           )}
         >
-          <Icon name="call_made" size={18} />
+          <Icon name="call_made" size={16} />
           Outbound
         </button>
         <button
           type="button"
           onClick={() => setDirection("Inbound")}
           className={cn(
-            "flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+            "flex flex-1 items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-sm font-medium transition-colors",
             direction === "Inbound"
               ? "border-[#2C365D] bg-[#2C365D] text-white dark:border-[#7c8cb8] dark:bg-[#7c8cb8]"
               : "border-border bg-white text-muted-foreground hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:hover:bg-gray-700"
           )}
         >
-          <Icon name="call_received" size={18} />
+          <Icon name="call_received" size={16} />
           Inbound
         </button>
       </div>
@@ -234,7 +234,7 @@ export default function CallLogPanel({
         placeholder="Subject (e.g. Follow-up call)"
         value={subject}
         onChange={(e) => setSubject(e.target.value)}
-        className="mt-3 rounded-lg border-border bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-400"
+        className="mt-2 rounded-lg border-border bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-400"
         style={{ fontSize: "var(--tally-font-size-sm)" }}
       />
 
@@ -244,14 +244,14 @@ export default function CallLogPanel({
             placeholder="From (caller)"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="mt-3 rounded-lg border-border bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            className="mt-2 rounded-lg border-border bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             style={{ fontSize: "var(--tally-font-size-sm)" }}
           />
           <Input
             placeholder="To (e.g. yourself)"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="mt-2 rounded-lg border-border bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+            className="mt-1.5 rounded-lg border-border bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
             style={{ fontSize: "var(--tally-font-size-sm)" }}
           />
         </>
@@ -260,7 +260,7 @@ export default function CallLogPanel({
           placeholder="To (person/contact called)"
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="mt-3 rounded-lg border-border bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+          className="mt-2 rounded-lg border-border bg-white dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
           style={{ fontSize: "var(--tally-font-size-sm)" }}
         />
       )}
@@ -269,14 +269,14 @@ export default function CallLogPanel({
         placeholder="Call summary or notes"
         value={summary}
         onChange={(e) => setSummary(e.target.value)}
-        rows={4}
+        rows={expanded ? 5 : 3}
         className={cn(
-          "mt-3 w-full resize-y rounded-lg border border-border bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-[#2C365D] focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-400"
+          "mt-2 w-full resize-y rounded-lg border border-border bg-white px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-[#2C365D] focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-400"
         )}
         style={{ fontSize: "var(--tally-font-size-sm)" }}
       />
 
-      <div className="flex justify-end gap-2 border-t border-border pt-3 dark:border-gray-700">
+      <div className="flex justify-end gap-2 border-t border-border pt-2 dark:border-gray-700">
         <Button variant="outline" size="sm" onClick={handleClose}>
           Cancel
         </Button>
@@ -310,13 +310,13 @@ export default function CallLogPanel({
           aria-labelledby="call-log-panel-title"
           className={`${posClass} left-1/2 top-1/2 z-50 flex w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100`}
           style={{
-            maxHeight: "min(75vh, 520px)",
+            maxHeight: "min(85vh, 560px)",
             boxShadow:
               "0 20px 40px -12px rgba(0,0,0,0.15), 0 8px 20px -8px rgba(0,0,0,0.1)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
             <h2
               id="call-log-panel-title"
               className="leading-none text-base font-semibold text-gray-900 dark:text-gray-100"
@@ -324,26 +324,26 @@ export default function CallLogPanel({
             >
               Log call
             </h2>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={handleExpandToggle}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+                className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
                 aria-label="Minimise"
               >
-                <Icon name="close_fullscreen" size={20} />
+                <Icon name="close_fullscreen" size={18} />
               </button>
               <button
                 type="button"
                 onClick={handleClose}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+                className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
                 aria-label="Close"
               >
-                <Icon name="close" size={20} />
+                <Icon name="close" size={18} />
               </button>
             </div>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
             {formContent}
           </div>
         </div>
@@ -366,17 +366,17 @@ export default function CallLogPanel({
         right: MINI_DEFAULT_RIGHT - dragOffset.x,
         bottom: MINI_DEFAULT_BOTTOM - dragOffset.y,
         width: "min(400px, calc(100vw - 3rem))",
-        maxHeight: "min(420px, 85vh)",
+        maxHeight: "min(360px, 85vh)",
         boxShadow:
           "0 20px 40px -12px rgba(0,0,0,0.15), 0 8px 20px -8px rgba(0,0,0,0.1)",
       }}
     >
       <div
-        className="flex shrink-0 cursor-grab items-center gap-2 border-b border-border bg-gray-50 px-3 py-2.5 active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800"
+        className="flex shrink-0 cursor-grab items-center gap-1.5 border-b border-border bg-gray-50 px-3 py-2 active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800"
         onMouseDown={onDragHandleMouseDown}
       >
         <span className="cursor-grab text-gray-500 active:cursor-grabbing dark:text-gray-400" aria-hidden>
-          <Icon name="drag_indicator" size={20} />
+          <Icon name="drag_indicator" size={18} />
         </span>
         <h2
           id="call-log-panel-title"
@@ -388,30 +388,30 @@ export default function CallLogPanel({
         <button
           type="button"
           onClick={handleResetPosition}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
+          className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
           aria-label="Reset position"
           title="Reset position to default"
         >
-          <Icon name="pip" size={18} />
+          <Icon name="pip" size={16} />
         </button>
         <button
           type="button"
           onClick={handleExpandToggle}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
+          className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
           aria-label="Expand"
         >
-          <Icon name="open_in_full" size={18} />
+          <Icon name="open_in_full" size={16} />
         </button>
         <button
           type="button"
           onClick={handleClose}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
           aria-label="Close"
         >
-          <Icon name="close" size={18} />
+          <Icon name="close" size={16} />
         </button>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
         {formContent}
       </div>
     </div>

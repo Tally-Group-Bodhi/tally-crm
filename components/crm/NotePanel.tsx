@@ -362,8 +362,8 @@ export default function NotePanel({
         contentEditable
         onInput={handleEditorInput}
         className={cn(
-          "mt-3 min-h-[120px] overflow-y-auto rounded-lg border border-border bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-[#2C365D] focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100",
-          expanded ? "min-h-[200px] max-h-[40vh]" : "max-h-[200px]",
+          "mt-2 min-h-[80px] overflow-y-auto rounded-lg border border-border bg-white px-2.5 py-1.5 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-[#2C365D] focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100",
+          expanded ? "min-h-[280px] max-h-[55vh]" : "max-h-[160px]",
           "empty:before:content-['Notes'] empty:before:text-gray-400 dark:empty:before:text-gray-500"
         )}
         data-placeholder="Notes"
@@ -371,55 +371,55 @@ export default function NotePanel({
       />
 
       {/* Rich text toolbar below notes */}
-      <div className="flex flex-wrap items-center gap-0.5 py-1.5">
+      <div className="flex flex-wrap items-center gap-0.5 py-1">
         <button
           type="button"
           onClick={() => execFormat("bold")}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
           title="Bold"
         >
-          <Icon name="format_bold" size={20} />
+          <Icon name="format_bold" size={18} />
         </button>
         <button
           type="button"
           onClick={() => execFormat("italic")}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
           title="Italic"
         >
-          <Icon name="format_italic" size={20} />
+          <Icon name="format_italic" size={18} />
         </button>
         <button
           type="button"
           onClick={() => execFormat("underline")}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
           title="Underline"
         >
-          <Icon name="format_underlined" size={20} />
+          <Icon name="format_underlined" size={18} />
         </button>
-        <span className="mx-1 h-5 w-px bg-border dark:bg-gray-600" />
+        <span className="mx-0.5 h-4 w-px bg-border dark:bg-gray-600" />
         <button
           type="button"
           onClick={insertLink}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
           title="Insert link"
         >
-          <Icon name="link" size={20} />
+          <Icon name="link" size={18} />
         </button>
         <button
           type="button"
           onClick={insertSnippet}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
           title="Code"
         >
-          <Icon name="code" size={20} />
+          <Icon name="code" size={18} />
         </button>
         <button
           type="button"
           onClick={() => imageInputRef.current?.click()}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
           title="Image"
         >
-          <Icon name="image" size={20} />
+          <Icon name="image" size={18} />
         </button>
         <input
           ref={imageInputRef}
@@ -431,10 +431,10 @@ export default function NotePanel({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="rounded p-1 text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700"
           title="Attachment"
         >
-          <Icon name="attach_file" size={20} />
+          <Icon name="attach_file" size={18} />
         </button>
         <input
           ref={fileInputRef}
@@ -445,13 +445,13 @@ export default function NotePanel({
       </div>
 
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {attachments.map((att) => (
             <div
               key={att.id}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-gray-50 px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+              className="inline-flex items-center gap-1 rounded-lg border border-border bg-gray-50 px-1.5 py-0.5 text-xs dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
             >
-              <Icon name="attach_file" size={14} className="text-muted-foreground" />
+              <Icon name="attach_file" size={12} className="text-muted-foreground" />
               <span>{att.name}</span>
               <span className="text-muted-foreground">({att.size})</span>
             </div>
@@ -460,7 +460,7 @@ export default function NotePanel({
       )}
 
       {/* Footer */}
-      <div className="flex justify-end gap-2 border-t border-border pt-3 dark:border-gray-700">
+      <div className="flex justify-end gap-2 border-t border-border pt-2 dark:border-gray-700">
         <Button variant="outline" size="sm" onClick={handleClose}>
           Cancel
         </Button>
@@ -495,14 +495,14 @@ export default function NotePanel({
           aria-labelledby="note-panel-title"
           className={`${posClass} left-1/2 top-1/2 z-50 flex w-full max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-white shadow-xl dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100`}
           style={{
-            maxHeight: "min(75vh, 640px)",
+            maxHeight: "min(85vh, 720px)",
             boxShadow:
               "0 20px 40px -12px rgba(0,0,0,0.15), 0 8px 20px -8px rgba(0,0,0,0.1)",
           }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-800">
             <h2
               id="note-panel-title"
               className="leading-none text-base font-semibold text-gray-900 dark:text-gray-100"
@@ -518,26 +518,26 @@ export default function NotePanel({
                 Draft saved {lastDraftSaved}
               </span>
             )}
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={handleExpandToggle}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+                className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
                 aria-label="Minimise"
               >
-                <Icon name="close_fullscreen" size={20} />
+                <Icon name="close_fullscreen" size={18} />
               </button>
               <button
                 type="button"
                 onClick={handleClose}
-                className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
+                className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700"
                 aria-label="Close"
               >
-                <Icon name="close" size={20} />
+                <Icon name="close" size={18} />
               </button>
             </div>
           </div>
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
             {formContent}
           </div>
         </div>
@@ -561,21 +561,21 @@ export default function NotePanel({
         right: MINI_DEFAULT_RIGHT - dragOffset.x,
         bottom: MINI_DEFAULT_BOTTOM - dragOffset.y,
         width: "min(400px, calc(100vw - 3rem))",
-        maxHeight: "min(420px, 85vh)",
+        maxHeight: "min(360px, 85vh)",
         boxShadow:
           "0 20px 40px -12px rgba(0,0,0,0.15), 0 8px 20px -8px rgba(0,0,0,0.1)",
       }}
     >
       {/* Header: drag handle, title, reset position, expand, close */}
       <div
-        className="flex shrink-0 cursor-grab items-center gap-2 border-b border-border bg-gray-50 px-3 py-2.5 active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800"
+        className="flex shrink-0 cursor-grab items-center gap-1.5 border-b border-border bg-gray-50 px-3 py-2 active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800"
         onMouseDown={onDragHandleMouseDown}
       >
         <span
           className="cursor-grab text-gray-500 active:cursor-grabbing dark:text-gray-400"
           aria-hidden
         >
-          <Icon name="drag_indicator" size={20} />
+          <Icon name="drag_indicator" size={18} />
         </span>
         <h2
           id="note-panel-title"
@@ -595,30 +595,30 @@ export default function NotePanel({
         <button
           type="button"
           onClick={handleResetPosition}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
+          className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
           aria-label="Reset position"
           title="Reset position to default"
         >
-          <Icon name="pip" size={18} />
+          <Icon name="pip" size={16} />
         </button>
         <button
           type="button"
           onClick={handleExpandToggle}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
+          className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
           aria-label="Expand"
         >
-          <Icon name="open_in_full" size={18} />
+          <Icon name="open_in_full" size={16} />
         </button>
         <button
           type="button"
           onClick={handleClose}
-          className="rounded p-1.5 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
+          className="rounded p-1 text-gray-600 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-gray-700 shrink-0"
           aria-label="Close"
         >
-          <Icon name="close" size={18} />
+          <Icon name="close" size={16} />
         </button>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3">
         {formContent}
       </div>
     </div>
