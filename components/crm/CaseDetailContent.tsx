@@ -293,6 +293,16 @@ export default function CaseDetailContent({
       a === COMM_UNASSIGNED_LABEL ? 1 : b === COMM_UNASSIGNED_LABEL ? -1 : a.localeCompare(b)
     );
   }, [mergedCommunications]);
+  const commCounts = React.useMemo(() => {
+    let notes = 0, emails = 0, calls = 0;
+    for (const c of mergedCommunications) {
+      if (c.type === "Note") notes++;
+      else if (c.type === "Email") emails++;
+      else if (c.type === "Phone") calls++;
+    }
+    return { all: mergedCommunications.length, notes, emails, calls };
+  }, [mergedCommunications]);
+
   const filteredCommunications = React.useMemo(() => {
     let list = mergedCommunications;
     if (communicationsFilterTab !== "all") {
@@ -811,40 +821,51 @@ export default function CaseDetailContent({
 
         <TabsContent value="communications" className="mt-0 min-w-0 w-full overflow-hidden">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-            {/* Left: filter button group — compact, matches right-side controls and project tabs */}
             <nav
-              className="inline-flex h-8 w-fit rounded-md border border-border bg-gray-100 p-0.5 dark:border-gray-700 dark:bg-gray-800"
+              className="inline-flex items-center gap-1.5"
               aria-label="Filter communications by type"
               role="group"
             >
               {(
                 [
-                  { value: "all" as const, label: "All updates", icon: "list" as const },
-                  { value: "notes" as const, label: "Notes", icon: "edit" as const },
-                  { value: "emails" as const, label: "Emails", icon: "mail" as const },
-                  { value: "calls" as const, label: "Call logs", icon: "call" as const },
-                ] satisfies { value: CommFilterTab; label: string; icon: string }[]
-              ).map(({ value, label, icon }, index) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setCommunicationsFilterTab(value)}
-                  className={cn(
-                    "inline-flex h-full items-center justify-center gap-1.5 px-3 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    index === 0 && "rounded-l-[5px]",
-                    index === 3 && "rounded-r-[5px]",
-                    index > 0 && "border-l border-border dark:border-gray-600",
-                    communicationsFilterTab === value
-                      ? "bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100"
-                      : "text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300"
-                  )}
-                  style={{ fontSize: "var(--tally-font-size-sm)" }}
-                  aria-pressed={communicationsFilterTab === value}
-                >
-                  <Icon name={icon} size={16} className="shrink-0 text-current" />
-                  {label}
-                </button>
-              ))}
+                  { value: "all" as const, label: "All", icon: null, count: commCounts.all },
+                  { value: "notes" as const, label: "Notes", icon: "subject" as const, count: commCounts.notes },
+                  { value: "emails" as const, label: "Emails", icon: "mail" as const, count: commCounts.emails },
+                  { value: "calls" as const, label: "Calls", icon: "call" as const, count: commCounts.calls },
+                ] satisfies { value: CommFilterTab; label: string; icon: string | null; count: number }[]
+              ).map(({ value, label, icon, count }) => {
+                const active = communicationsFilterTab === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setCommunicationsFilterTab(value)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      active
+                        ? "border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900"
+                        : "border-border bg-white text-muted-foreground hover:bg-gray-50 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                    )}
+                    style={{ fontSize: "var(--tally-font-size-xs)" }}
+                    aria-pressed={active}
+                  >
+                    {icon && <Icon name={icon} size={16} className="shrink-0 text-current" />}
+                    {label}
+                    {count > 0 && (
+                      <span
+                        className={cn(
+                          "inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1 text-xs font-semibold leading-5",
+                          active
+                            ? "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </nav>
             {/* Right: Actions, Search, User, Expand All */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -931,6 +952,22 @@ export default function CaseDetailContent({
                   aria-label="Search communications"
                 />
               </div>
+              {hasLinkedComms && (
+                <button
+                  type="button"
+                  onClick={() => setShowFullThread((v) => !v)}
+                  className={cn(
+                    "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors",
+                    showFullThread
+                      ? "border-[#006180]/30 bg-[#006180]/10 text-[#006180] hover:bg-[#006180]/15 dark:border-[#0091BF]/30 dark:bg-[#0091BF]/15 dark:text-[#80E0FF] dark:hover:bg-[#0091BF]/20"
+                      : "border-border bg-white text-muted-foreground hover:bg-gray-50 hover:text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                  )}
+                  aria-pressed={showFullThread}
+                >
+                  <Icon name="account_tree" size={14} className="shrink-0" />
+                  {showFullThread ? "Hide" : "Show"} Linked Cases
+                </button>
+              )}
               <Popover>
                 <PopoverTrigger
                   className={cn(
@@ -999,25 +1036,6 @@ export default function CaseDetailContent({
               )}
             </div>
           </div>
-          {hasLinkedComms && (
-            <div className="mb-3 flex items-center gap-2 rounded-lg border border-[#006180]/15 bg-[#006180]/[0.03] px-4 py-2 dark:border-[#0091BF]/20 dark:bg-[#0091BF]/[0.04]">
-              <Icon name="account_tree" size={16} className="shrink-0 text-[#006180] dark:text-[#80E0FF]" />
-              <span
-                className="flex-1 text-gray-700 dark:text-gray-300"
-                style={{ fontSize: "var(--tally-font-size-sm)" }}
-              >
-                {showFullThread ? "Showing full thread history across linked cases" : "Showing this case only"}
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowFullThread((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-[#006180]/25 bg-white px-2.5 py-1 text-xs font-medium text-[#006180] transition-colors hover:bg-[#006180]/5 dark:border-[#0091BF]/30 dark:bg-gray-900 dark:text-[#80E0FF] dark:hover:bg-[#0091BF]/10"
-              >
-                <Icon name={showFullThread ? "visibility_off" : "visibility"} size={14} className="shrink-0" />
-                {showFullThread ? "This case only" : "Full thread history"}
-              </button>
-            </div>
-          )}
           <CommunicationTimeline
             communications={filteredCommunications}
             expandedIds={communicationsExpandedIds}

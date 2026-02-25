@@ -55,15 +55,15 @@ export default function ActivityTimeline({
 
             {/* Content */}
             <div>
-              <p className="text-sm text-gray-900 dark:text-gray-100">
+              <p className="text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
                 {activity.description}
               </p>
               {activity.metadata && activity.metadata.from && (
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <p className="mt-0.5 text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
                   {activity.metadata.from} → {activity.metadata.to}
                 </p>
               )}
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <p className="mt-0.5 text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
                 {activity.user} · {activity.timestamp}
               </p>
             </div>

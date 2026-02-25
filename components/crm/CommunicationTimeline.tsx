@@ -117,7 +117,7 @@ function CommCard({
             <div className="flex shrink-0 items-center text-muted-foreground">
               <Icon name={typeIcons[comm.type] ?? "mail"} size={20} />
             </div>
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
               {typeLoggedLabel[comm.type] ?? "Logged"} by {comm.loggedBy ?? "—"}
             </span>
             {isFromOtherCase && comm.sourceCaseId && (
@@ -134,7 +134,7 @@ function CommCard({
           <div className="flex w-full items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                <span className="truncate font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
                   {comm.subject}
                 </span>
                 <Badge
@@ -150,13 +150,13 @@ function CommCard({
                   {dirConfig.label}
                 </Badge>
               </div>
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+              <p className="mt-0.5 truncate text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
                 {comm.direction === "Inbound" ? "From" : "To"}:{" "}
                 {comm.direction === "Inbound" ? comm.from : comm.to}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
                 {formatTimestampDisplay(comm.timestamp)}
               </span>
               <Icon
@@ -172,7 +172,7 @@ function CommCard({
         {isExpanded && (
           <div className="min-w-0 max-w-full overflow-x-hidden border-t border-border px-5 py-3 dark:border-gray-700">
               {/* Metadata */}
-              <div className="mb-3 space-y-0.5 text-[11px] text-muted-foreground">
+              <div className="mb-3 space-y-0.5 text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
                 <p>
                   <span className="font-medium">From:</span> {comm.from}
                 </p>
@@ -198,24 +198,26 @@ function CommCard({
 
               {comm.type === "Note" && /<[a-zA-Z]/.test(comm.body) ? (
                 <div
-                  className="comm-note-body text-sm leading-relaxed text-gray-700 dark:text-gray-300"
+                  className="comm-note-body leading-relaxed text-gray-700 dark:text-gray-300"
+                  style={{ fontSize: "var(--tally-font-size-sm)" }}
                   dangerouslySetInnerHTML={{ __html: comm.body }}
                 />
               ) : (
-                <div className="comm-note-body whitespace-pre-wrap text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                <div className="comm-note-body whitespace-pre-wrap leading-relaxed text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
                   {comm.body}
                 </div>
               )}
 
               {comm.attachments.length > 0 && (
                 <div className="mt-3 border-t border-border pt-3 dark:border-gray-700">
-                  <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="mb-1.5 font-medium uppercase tracking-wide text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
                     Attachments
                   </p>
                   {comm.attachments.map((att) => (
                     <div
                       key={att.id}
-                      className="inline-flex items-center gap-1.5 rounded border border-border bg-gray-50 px-2 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                      className="inline-flex items-center gap-1.5 rounded border border-border bg-gray-50 px-2 py-1 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                      style={{ fontSize: "var(--tally-font-size-xs)" }}
                     >
                       <Icon name="attach_file" size={14} />
                       {att.name}
@@ -356,10 +358,10 @@ export default function CommunicationTimeline({
                 size={16}
                 className="shrink-0 text-[#006180] dark:text-[#80E0FF]"
               />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+              <span className="min-w-0 flex-1 truncate font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
                 {group.subject}
               </span>
-              <span className="shrink-0 text-[11px] text-muted-foreground">
+              <span className="shrink-0 text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
                 {group.communications.length} emails
               </span>
               {crossCaseCount > 0 && (
