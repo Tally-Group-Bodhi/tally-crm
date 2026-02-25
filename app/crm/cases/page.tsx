@@ -122,6 +122,33 @@ const priorityVariant: Record<CasePriority, "error" | "warning" | "info" | "outl
   Low: "outline",
 };
 
+function parseDDMMYYYY(dateStr: string): Date | null {
+  const parts = dateStr.split("/");
+  if (parts.length !== 3) return null;
+  const [dd, mm, yyyy] = parts;
+  const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function formatDuration(ms: number): string {
+  const totalHours = Math.floor(ms / (1000 * 60 * 60));
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  if (days === 0) return `${hours}h`;
+  if (hours === 0) return `${days}d`;
+  return `${days}d ${hours}h`;
+}
+
+function getResolutionTime(c: CaseItem): string | null {
+  if (c.status !== "Closed" && c.status !== "Resolved") return null;
+  const created = parseDDMMYYYY(c.createdDate);
+  const updated = parseDDMMYYYY(c.updatedDate);
+  if (!created || !updated) return null;
+  const diff = updated.getTime() - created.getTime();
+  if (diff < 0) return null;
+  return formatDuration(diff);
+}
+
 export default function CaseListPage() {
   const router = useRouter();
   const useDb = useDatabase();
@@ -972,6 +999,7 @@ export default function CaseListPage() {
                   {renderSortHeader("slaStatus", "SLA")}
                   {renderSortHeader("owner", "Owner")}
                   {renderSortHeader("createdDate", "Created")}
+                  <TableHead>Resolution Time</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1012,11 +1040,23 @@ export default function CaseListPage() {
                     <TableCell className="text-gray-500 dark:text-gray-400">
                       {caseItem.createdDate}
                     </TableCell>
+                    <TableCell className="text-gray-500 dark:text-gray-400">
+                      {(() => {
+                        const rt = getResolutionTime(caseItem);
+                        if (!rt) return "—";
+                        return (
+                          <span className="inline-flex items-center gap-1 text-[#008000] dark:text-green-400">
+                            <Icon name="timer" size={14} className="shrink-0" />
+                            {rt}
+                          </span>
+                        );
+                      })()}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-12 text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="py-12 text-center text-muted-foreground">
                       No cases match your filters.
                     </TableCell>
                   </TableRow>

@@ -201,6 +201,7 @@ export default function CaseDetailContent({
   type CommFilterTab = "all" | "notes" | "emails" | "calls";
   const [communicationsFilterTab, setCommunicationsFilterTab] = React.useState<CommFilterTab>("all");
   const [closeCaseModalOpen, setCloseCaseModalOpen] = React.useState(false);
+  const [assignPopoverOpen, setAssignPopoverOpen] = React.useState(false);
   const [pendingStatusChange, setPendingStatusChange] = React.useState<CaseStatus | null>(null);
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(null);
   const [expandedContactId, setExpandedContactId] = React.useState<string | null>(null);
@@ -284,6 +285,43 @@ export default function CaseDetailContent({
   }, []);
   const clearCommUserFilter = React.useCallback(() => setCommunicationsSelectedUsers(new Set()), []);
 
+  const CURRENT_USER = "John Smith";
+  const TEAM_MEMBERS = ["John Smith", "Priya Sharma", "Daniel Cooper"];
+  const isUnassigned = caseItem.owner === "Unassigned";
+
+  const handleAssign = React.useCallback(
+    (assignee: string) => {
+      if (!onUpdateCase) return;
+      setAssignPopoverOpen(false);
+      setUpdating(true);
+      const now = new Date();
+      const timestamp = now.toLocaleString("en-AU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+      const assignActivity: Activity = {
+        id: `act-assign-${Date.now()}`,
+        type: "Assignment",
+        description: `Case assigned to ${assignee}`,
+        user: CURRENT_USER,
+        timestamp,
+      };
+      const payload: Partial<CaseItem> = {
+        owner: assignee,
+        activities: [assignActivity, ...(caseItem.activities ?? [])],
+      };
+      if (caseItem.status === "New") {
+        payload.status = "In Progress";
+      }
+      Promise.resolve(onUpdateCase(payload)).finally(() => setUpdating(false));
+    },
+    [onUpdateCase, caseItem.activities, caseItem.status]
+  );
+
   return (
     <div className="min-w-0 w-full p-density-xl">
       <div className="mx-auto w-full min-w-0 max-w-[1400px]">
@@ -350,10 +388,41 @@ export default function CaseDetailContent({
             </p>
           </div>
           <div className="flex shrink-0 items-start gap-2">
-            <Button variant="outline" size="md" className="gap-1.5">
-              <Icon name="person_add" size="var(--tally-icon-size-sm)" />
-              Assign
-            </Button>
+            <Popover open={assignPopoverOpen} onOpenChange={setAssignPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="md" className="gap-1.5" disabled={!onUpdateCase || updating}>
+                  <Icon name="person_add" size="var(--tally-icon-size-sm)" />
+                  {isUnassigned ? "Assign" : "Reassign"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[220px] p-1">
+                <button
+                  type="button"
+                  onClick={() => handleAssign(CURRENT_USER)}
+                  className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm font-medium text-[#006180] hover:bg-[#E6F7FF] dark:text-[#80E0FF] dark:hover:bg-[#006180]/20"
+                >
+                  <Icon name="person" size={16} className="shrink-0" />
+                  Assign to me
+                </button>
+                <div className="my-1 border-t border-border dark:border-gray-700" />
+                <p className="px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Team members</p>
+                {TEAM_MEMBERS.filter((m) => m !== caseItem.owner).map((member) => (
+                  <button
+                    key={member}
+                    type="button"
+                    onClick={() => handleAssign(member)}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800",
+                      member === CURRENT_USER && "font-medium"
+                    )}
+                  >
+                    <Icon name="person" size={16} className="shrink-0 text-muted-foreground" />
+                    {member}
+                    {member === CURRENT_USER && <span className="ml-auto text-xs text-muted-foreground">(you)</span>}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
             <Button
               variant="outline"
               size="md"
@@ -388,8 +457,8 @@ export default function CaseDetailContent({
           </div>
         </div>
 
-        {/* Status bar and SLA — stack progress bar above SLA on small viewports */}
-        <div className="mt-4 flex min-w-0 flex-col items-stretch justify-between gap-4 rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-900 sm:flex-row sm:items-center">
+        {/* Status bar and SLA */}
+        <div className="mt-4 flex min-w-0 flex-col items-stretch justify-between gap-3 rounded-lg border border-border bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 sm:flex-row sm:items-center">
           <StatusProgressBar
             currentStatus={caseItem.status}
             className="min-w-0 w-full flex-1 sm:min-w-0"

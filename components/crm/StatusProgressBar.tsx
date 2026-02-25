@@ -41,7 +41,7 @@ export default function StatusProgressBar({
           <>
             <div
               className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-full border-2 transition-colors",
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
                 isClickable && "cursor-pointer hover:opacity-90",
                 isCompleted &&
                   "border-[#008000] bg-[#008000] text-white",
@@ -52,11 +52,11 @@ export default function StatusProgressBar({
                   "border-gray-300 bg-white text-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500"
               )}
             >
-              <Icon name={isCompleted ? "check" : step.icon} size={16} />
+              <Icon name={isCompleted ? "check" : step.icon} size={14} />
             </div>
             <span
               className={cn(
-                "max-w-[80px] text-center text-[10px] font-medium leading-tight",
+                "whitespace-nowrap text-xs font-medium",
                 isCurrent
                   ? "text-[#2C365D] dark:text-[#7c8cb8]"
                   : isCompleted
@@ -71,26 +71,24 @@ export default function StatusProgressBar({
 
         return (
           <React.Fragment key={step.status}>
-            <div className="flex flex-col items-center gap-1">
-              {isClickable ? (
-                <button
-                  type="button"
-                  onClick={() => onStatusChange(step.status)}
-                  className="flex flex-col items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#006180] focus-visible:ring-offset-2"
-                  aria-label={`Change status to ${step.status}`}
-                >
-                  {stepContent}
-                </button>
-              ) : (
-                <div className="flex flex-col items-center gap-1">
-                  {stepContent}
-                </div>
-              )}
-            </div>
+            {isClickable ? (
+              <button
+                type="button"
+                onClick={() => onStatusChange(step.status)}
+                className="flex shrink-0 items-center gap-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#006180] focus-visible:ring-offset-1"
+                aria-label={`Change status to ${step.status}`}
+              >
+                {stepContent}
+              </button>
+            ) : (
+              <div className="flex shrink-0 items-center gap-1.5">
+                {stepContent}
+              </div>
+            )}
             {!isLast && (
               <div
                 className={cn(
-                  "mx-1 mb-5 h-0.5 flex-1",
+                  "mx-1.5 h-[1.5px] w-4 shrink-0 sm:mx-2 sm:flex-1",
                   index < currentIndex
                     ? "bg-[#008000]"
                     : "bg-gray-200 dark:bg-gray-700"
