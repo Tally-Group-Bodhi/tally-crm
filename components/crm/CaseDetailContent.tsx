@@ -200,7 +200,6 @@ export default function CaseDetailContent({
   const [updating, setUpdating] = React.useState(false);
   const [communicationsExpandedIds, setCommunicationsExpandedIds] = React.useState<Set<string>>(new Set());
   const [communicationsSearchQuery, setCommunicationsSearchQuery] = React.useState("");
-  const [communicationsSelectedUsers, setCommunicationsSelectedUsers] = React.useState<Set<string>>(new Set());
   type CommFilterTab = "all" | "notes" | "emails" | "calls";
   const [communicationsFilterTab, setCommunicationsFilterTab] = React.useState<CommFilterTab>("all");
   const [closeCaseModalOpen, setCloseCaseModalOpen] = React.useState(false);
@@ -285,14 +284,6 @@ export default function CaseDetailContent({
     return [...thisComms, ...deduped];
   }, [caseItem.communications, caseItem.id, caseItem.caseNumber, showFullThread, linkedCases]);
 
-  const COMM_UNASSIGNED_LABEL = "—";
-  const communicationsUniqueUsers = React.useMemo(() => {
-    const set = new Set<string>();
-    mergedCommunications.forEach((c) => set.add(c.loggedBy?.trim() || COMM_UNASSIGNED_LABEL));
-    return Array.from(set).sort((a, b) =>
-      a === COMM_UNASSIGNED_LABEL ? 1 : b === COMM_UNASSIGNED_LABEL ? -1 : a.localeCompare(b)
-    );
-  }, [mergedCommunications]);
   const commCounts = React.useMemo(() => {
     let notes = 0, emails = 0, calls = 0;
     for (const c of mergedCommunications) {
@@ -324,28 +315,12 @@ export default function CaseDetailContent({
           c.to.toLowerCase().includes(q)
       );
     }
-    if (communicationsSelectedUsers.size > 0) {
-      list = list.filter((c) => {
-        const user = c.loggedBy?.trim() || COMM_UNASSIGNED_LABEL;
-        return communicationsSelectedUsers.has(user);
-      });
-    }
     return list;
   }, [
     mergedCommunications,
     communicationsFilterTab,
     communicationsSearchQuery,
-    communicationsSelectedUsers,
   ]);
-  const toggleCommUser = React.useCallback((user: string) => {
-    setCommunicationsSelectedUsers((prev) => {
-      const next = new Set(prev);
-      if (next.has(user)) next.delete(user);
-      else next.add(user);
-      return next;
-    });
-  }, []);
-  const clearCommUserFilter = React.useCallback(() => setCommunicationsSelectedUsers(new Set()), []);
 
   const CURRENT_USER = "John Smith";
   const TEAM_MEMBERS = ["John Smith", "Priya Sharma", "Daniel Cooper"];
@@ -504,18 +479,6 @@ export default function CaseDetailContent({
               <Icon name="lock" size="var(--tally-icon-size-sm)" />
               Close Case
             </Button>
-            {onDeleteCase && (
-              <Button
-                variant="outline"
-                size="md"
-                className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30"
-                disabled={updating}
-                onClick={() => onDeleteCase()}
-              >
-                <Icon name="delete" size="var(--tally-icon-size-sm)" />
-                Delete
-              </Button>
-            )}
             {showOpenInFullPage && (
               <Link
                 href={`/crm/cases/${caseItem.id}`}
@@ -839,8 +802,8 @@ export default function CaseDetailContent({
                     className={cn(
                       "inline-flex items-center gap-1 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       active
-                        ? "rounded-full border border-gray-900 bg-gray-900 px-3 py-1.5 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900"
-                        : "px-2 py-1.5 text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300"
+                        ? "rounded-md border border-border bg-white px-2 py-1 text-gray-900 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                        : "px-2 py-1 text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300"
                     )}
                     style={{ fontSize: "var(--tally-font-size-xs)" }}
                     aria-pressed={active}
@@ -850,9 +813,9 @@ export default function CaseDetailContent({
                     {count > 0 && (
                       <span
                         className={cn(
-                          "inline-flex min-w-[1.25rem] items-center justify-center px-1 text-xs font-semibold leading-5",
+                          "inline-flex min-w-[1.25rem] items-center justify-center px-0.5 text-xs font-semibold leading-5",
                           active
-                            ? "rounded-full bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900"
+                            ? "text-gray-900 dark:text-gray-100"
                             : "text-muted-foreground"
                         )}
                       >
@@ -964,51 +927,6 @@ export default function CaseDetailContent({
                   {showFullThread ? "Hide" : "Show"} Linked Cases
                 </button>
               )}
-              <Popover>
-                <PopoverTrigger
-                  className={cn(
-                    "inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-white px-2.5 py-1.5 text-sm text-gray-700 transition-colors dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700",
-                    communicationsSelectedUsers.size > 0 && "border-[#2C365D] bg-[#2C365D]/5 dark:border-[#7c8cb8] dark:bg-[#7c8cb8]/10"
-                  )}
-                  style={{ fontSize: "var(--tally-font-size-sm)" }}
-                >
-                  <Icon name="person" size={14} className="shrink-0 text-muted-foreground" />
-                  <span>User</span>
-                  {communicationsSelectedUsers.size > 0 && (
-                    <span className="rounded bg-[#2C365D] px-1 py-0 text-[10px] text-white dark:bg-[#7c8cb8]">
-                      {communicationsSelectedUsers.size}
-                    </span>
-                  )}
-                  <Icon name="expand_more" size={14} className="shrink-0 text-muted-foreground" />
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-48 p-2">
-                  <div className="max-h-52 overflow-y-auto">
-                    {communicationsUniqueUsers.map((user) => (
-                      <label
-                        key={user}
-                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={communicationsSelectedUsers.has(user)}
-                          onChange={() => toggleCommUser(user)}
-                          className="h-3.5 w-3.5 rounded border-border text-[#2C365D] focus:ring-[#2C365D] dark:border-gray-600 dark:bg-gray-700"
-                        />
-                        <span className="text-sm text-gray-900 dark:text-gray-100">{user}</span>
-                      </label>
-                    ))}
-                  </div>
-                  {communicationsSelectedUsers.size > 0 && (
-                    <button
-                      type="button"
-                      onClick={clearCommUserFilter}
-                      className="mt-2 w-full rounded py-1.5 text-center text-sm font-medium text-[#2C365D] hover:bg-gray-100 dark:text-[#7c8cb8] dark:hover:bg-gray-800"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </PopoverContent>
-              </Popover>
               {filteredCommunications.length > 0 && (
                 <button
                   type="button"

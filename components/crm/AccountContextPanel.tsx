@@ -130,7 +130,6 @@ export default function AccountContextPanel({
     { label: "Note", icon: "edit" as const },
     { label: "Email", icon: "mail" as const },
     { label: "Call", icon: "call" as const },
-    { label: "Meeting", icon: "event" as const },
   ] as const;
 
   const sectionTriggerClass =
@@ -147,54 +146,42 @@ export default function AccountContextPanel({
       )}
     >
       {/* Header — account name and badges */}
-      <div className="flex flex-col gap-density-sm border-b border-border px-density-md py-density-md dark:border-gray-800">
-        <div className="flex items-start gap-3">
-          <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2C365D] font-bold text-white"
+      <div className="flex flex-col gap-density-sm px-density-md pt-density-md pb-density-xs">
+        <div className="flex flex-col gap-1.5">
+          <p
+            className="font-bold text-gray-900 dark:text-gray-100 break-words"
+            style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}
+          >
+            {account.name}
+          </p>
+          <p
+            className="text-muted-foreground"
             style={{ fontSize: "var(--tally-font-size-sm)" }}
           >
-            {account.name
-              .split(" ")
-              .slice(0, 2)
-              .map((w) => w[0])
-              .join("")}
-          </div>
-          <div className="min-w-0 flex-1 flex flex-col gap-1.5">
-            <p
-              className="font-bold text-gray-900 dark:text-gray-100 break-words"
-              style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}
+            {account.accountNumber}
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge
+              variant={accountTypeVariant}
+              className="px-1.5 py-0"
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
             >
-              {account.name}
-            </p>
-            <p
-              className="text-muted-foreground"
-              style={{ fontSize: "var(--tally-font-size-sm)" }}
+              {account.type}
+            </Badge>
+            <Badge
+              variant={account.status === "Active" ? "success" : "error"}
+              className="px-1.5 py-0"
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
             >
-              {account.accountNumber}
-            </p>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Badge
-                variant={accountTypeVariant}
-                className="px-1.5 py-0"
-                style={{ fontSize: "var(--tally-font-size-xs)" }}
-              >
-                {account.type}
-              </Badge>
-              <Badge
-                variant={account.status === "Active" ? "success" : "error"}
-                className="px-1.5 py-0"
-                style={{ fontSize: "var(--tally-font-size-xs)" }}
-              >
-                {account.status}
-              </Badge>
-            </div>
+              {account.status}
+            </Badge>
           </div>
         </div>
       </div>
 
-      {/* Quick actions — Note, Email, Call, Meeting + more (single row) */}
+      {/* Quick actions — Note, Email, Call */}
       <div className="border-b border-border px-density-md py-density-sm dark:border-gray-800">
-        <div className="flex w-full flex-nowrap items-center justify-between gap-0.5">
+        <div className="flex w-full items-center gap-2">
           {QUICK_ACTIONS.map(({ label, icon }) => (
             <button
               key={label}
@@ -206,20 +193,19 @@ export default function AccountContextPanel({
                     ? onOpenCallLogPanel
                     : undefined
               }
-              className="flex shrink-0 flex-col items-center gap-0.5 rounded-density-sm p-1.5 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
-              title={label}
+              className="flex items-center gap-1.5 rounded-md border border-border bg-white px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
             >
-              <Icon name={icon} size={18} />
-              <span style={{ fontSize: "var(--tally-font-size-xs)" }}>{label}</span>
+              <Icon name={icon} size={15} />
+              <span>{label}</span>
             </button>
           ))}
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-density-sm p-1.5 text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+              className="flex items-center justify-center rounded-md border border-border bg-white p-1.5 text-muted-foreground transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
               aria-label="More options"
             >
-              <Icon name="more_horiz" size={18} />
-              <span style={{ fontSize: "var(--tally-font-size-xs)" }}>More</span>
+              <Icon name="more_horiz" size={15} />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[12rem]">
               <DropdownMenuItem

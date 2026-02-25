@@ -216,30 +216,18 @@ export default function OpportunityDetailPage() {
           </div>
 
           {/* Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4 h-10 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-              <TabsTrigger
-                value="details"
-                className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-              >
+          <Tabs value={activeTab} onValueChange={setActiveTab} variant="inline">
+            <TabsList className="mb-4">
+              <TabsTrigger value="details">
                 Details
               </TabsTrigger>
-              <TabsTrigger
-                value="quotes"
-                className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-              >
+              <TabsTrigger value="quotes">
                 Quotes ({opportunity.linkedQuotes.length})
               </TabsTrigger>
-              <TabsTrigger
-                value="activity"
-                className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-              >
+              <TabsTrigger value="activity">
                 Activity ({opportunity.activities.length})
               </TabsTrigger>
-              <TabsTrigger
-                value="files"
-                className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-              >
+              <TabsTrigger value="files">
                 Files ({opportunity.attachments.length})
               </TabsTrigger>
             </TabsList>
