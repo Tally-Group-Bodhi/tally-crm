@@ -157,6 +157,14 @@ export default function CaseListPage() {
   const [cases, setCases] = React.useState(() => mergeMockWithSession(mockCases));
   const [modalOpen, setModalOpen] = React.useState(false);
 
+  React.useEffect(() => {
+    if (!useDb) return;
+    fetch("/api/cases")
+      .then((r) => (r.ok ? (r.json() as Promise<CaseItem[]>) : []))
+      .then((data) => { if (data.length) setCases(data); })
+      .catch(() => {});
+  }, [useDb]);
+
   const createCaseViaApi = React.useCallback(
     (caseData: CaseItem) =>
       fetch("/api/cases", {
