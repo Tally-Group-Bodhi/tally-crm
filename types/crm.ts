@@ -134,6 +134,12 @@ export interface CaseItem {
   activities: Activity[];
   attachments: Attachment[];
   relatedCases: string[];
+  /** Parent case ID (self-referential) — set when this case was spawned from a closed parent */
+  parentCaseId?: string;
+  /** Parent case number for display (avoids extra lookup) */
+  parentCaseNumber?: string;
+  /** Child case IDs spawned from this case (e.g. post-closure replies) */
+  childCaseIds?: string[];
   /** When status is Pending, reason for pending (used for Kanban filter) */
   pendingReason?: "Customer" | "3rd Party" | "On Hold";
   /** Edit log: previous description values when description is updated (saved with updatedAt) */
@@ -154,6 +160,12 @@ export interface Communication {
   attachments: Attachment[];
   /** User who logged this communication (e.g. for "Logged Call by X") */
   loggedBy?: string;
+  /** Email thread identifier for grouping related emails across cases */
+  threadId?: string;
+  /** Source case ID — used when merging communications across parent/child cases */
+  sourceCaseId?: string;
+  /** Source case number — display label when viewing cross-case communications */
+  sourceCaseNumber?: string;
 }
 
 // ── Activity ────────────────────────────────────────────────────────────────

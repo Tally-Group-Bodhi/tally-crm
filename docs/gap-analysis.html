@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gap Analysis — Tally CRM vs CSE Blueprint</title>
+<style>
+  :root {
+    --bg: #f8f9fb;
+    --surface: #ffffff;
+    --border: #e2e5ea;
+    --text: #1a1d23;
+    --text-secondary: #5a6070;
+    --accent: #2563eb;
+    --accent-light: #eff4ff;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --red-bg: #fee2e2;
+    --orange: #d97706;
+    --orange-light: #fffbeb;
+    --orange-bg: #fef3c7;
+    --green: #16a34a;
+    --green-light: #f0fdf4;
+    --green-bg: #dcfce7;
+    --purple: #7c3aed;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  header {
+    margin-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 32px;
+  }
+
+  header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  header .subtitle {
+    font-size: 15px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  header .meta {
+    display: flex;
+    gap: 24px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  header .meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 40px;
+  }
+
+  .toc h2 {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+  }
+
+  .toc ol {
+    list-style: none;
+    counter-reset: toc-counter;
+    columns: 2;
+    column-gap: 32px;
+  }
+
+  .toc ol li {
+    counter-increment: toc-counter;
+    margin-bottom: 6px;
+  }
+
+  .toc ol li a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .toc ol li a:hover {
+    text-decoration: underline;
+  }
+
+  .toc ol li a::before {
+    content: counter(toc-counter) ". ";
+    color: var(--text-secondary);
+    font-weight: 400;
+  }
+
+  /* Summary table */
+  .summary-section {
+    margin-bottom: 48px;
+  }
+
+  .summary-section h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    font-size: 14px;
+  }
+
+  .summary-table thead th {
+    background: #f1f3f6;
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .summary-table tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  .summary-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .badge-red {
+    background: var(--red-bg);
+    color: var(--red);
+  }
+
+  .badge-orange {
+    background: var(--orange-bg);
+    color: var(--orange);
+  }
+
+  .badge-green {
+    background: var(--green-bg);
+    color: var(--green);
+  }
+
+  /* Sections */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    margin-bottom: 28px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section h2 {
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .section h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 20px 0 8px;
+    color: var(--text);
+  }
+
+  .status-box {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
+
+  .status-exists {
+    background: var(--green-light);
+    border-left: 3px solid var(--green);
+  }
+
+  .status-missing {
+    background: var(--red-light);
+    border-left: 3px solid var(--red);
+  }
+
+  .gap-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .gap-list li {
+    position: relative;
+    padding: 8px 0 8px 24px;
+    font-size: 14px;
+    border-bottom: 1px solid #f3f4f6;
+    line-height: 1.5;
+  }
+
+  .gap-list li:last-child {
+    border-bottom: none;
+  }
+
+  .gap-list li::before {
+    content: "✕";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    color: var(--red);
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  .gap-list li strong {
+    font-weight: 600;
+  }
+
+  .gap-list li .ref {
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .note {
+    background: #f8f9fb;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 16px 0;
+  }
+
+  .footer {
+    text-align: center;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 640px) {
+    .container { padding: 24px 16px 48px; }
+    .toc ol { columns: 1; }
+    header .meta { flex-direction: column; gap: 4px; }
+    .section { padding: 20px; }
+    .summary-table { font-size: 13px; }
+    .summary-table thead th,
+    .summary-table tbody td { padding: 10px 12px; }
+  }
+
+  @media print {
+    body { background: #fff; }
+    .container { max-width: 100%; padding: 0; }
+    .section { break-inside: avoid; border: 1px solid #ddd; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Gap Analysis: Tally CRM vs CSE Blueprint</h1>
+  <p class="subtitle">Comparison of the current Tally CRM platform against the CS Energy Replacing Salesforce Blueprint v0.1</p>
+  <div class="meta">
+    <span><strong>Prepared:</strong> 25 February 2026</span>
+    <span><strong>Blueprint Version:</strong> 0.3 (11 Feb 2026)</span>
+    <span><strong>Status:</strong> Internal Review</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#summary">Executive Summary</a></li>
+    <li><a href="#sales">Sales Management</a></li>
+    <li><a href="#customer">Customer Management</a></li>
+    <li><a href="#market">Market Transactions</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#billing">Billing</a></li>
+    <li><a href="#payments">Payments &amp; Reconciliations</a></li>
+    <li><a href="#credit">Credit Management</a></li>
+    <li><a href="#nonfunctional">Non-Functional &amp; Infrastructure</a></li>
+    <li><a href="#reporting">Reporting &amp; Correspondence</a></li>
+  </ol>
+</nav>
+
+<!-- ─── EXECUTIVE SUMMARY ─── -->
+<section id="summary" class="summary-section">
+  <h2>Executive Summary</h2>
+  <p style="font-size:14px; color:var(--text-secondary); margin-bottom:20px;">
+    The CSE Blueprint describes a full enterprise CIS (Customer Information System) platform for an electricity C&amp;I retailer. The current Tally CRM is a <strong>UI prototype</strong> focused on case management and pipeline visualisation with mostly mock data and a single database table (<code>Case</code>). The vast majority of required functionality — particularly energy industry-specific features — has not been built.
+  </p>
+
+  <table class="summary-table">
+    <thead>
+      <tr>
+        <th>Functional Area</th>
+        <th>Blueprint Req's</th>
+        <th>CRM Status</th>
+        <th>Coverage</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Sales Management</strong></td>
+        <td>22 items (SM-001 – SM-022)</td>
+        <td>Basic mock pipeline UI</td>
+        <td><span class="badge badge-red">~10%</span></td>
+      </tr>
+      <tr>
+        <td><strong>Customer Management</strong></td>
+        <td>80+ items (CS-001 – CS-103)</td>
+        <td>Mock UI + basic case CRUD</td>
+        <td><span class="badge badge-red">~15%</span></td>
+      </tr>
+      <tr>
+        <td><strong>Market Transactions</strong></td>
+        <td>44 items (MT-001 – MT-044)</td>
+        <td>Not implemented</td>
+        <td><span class="badge badge-red">0%</span></td>
+      </tr>
+      <tr>
+        <td><strong>Pricing</strong></td>
+        <td>45 items (PC-001 – PC-045)</td>
+        <td>Not implemented</td>
+        <td><span class="badge badge-red">0%</span></td>
+      </tr>
+      <tr>
+        <td><strong>Billing</strong></td>
+        <td>83 items (BL-001 – BL-083)</td>
+        <td>Not implemented</td>
+        <td><span class="badge badge-red">0%</span></td>
+      </tr>
+      <tr>
+        <td><strong>Payments &amp; Reconciliations</strong></td>
+        <td>32 items (PR-001 – PR-032)</td>
+        <td>Not implemented</td>
+        <td><span class="badge badge-red">0%</span></td>
+      </tr>
+      <tr>
+        <td><strong>Credit Management</strong></td>
+        <td>25 items (CM-001 – CM-025)</td>
+        <td>Not implemented</td>
+        <td><span class="badge badge-red">0%</span></td>
+      </tr>
+      <tr>
+        <td><strong>Reporting</strong></td>
+        <td>60+ named reports</td>
+        <td>Basic dashboard charts only</td>
+        <td><span class="badge badge-red">~5%</span></td>
+      </tr>
+      <tr>
+        <td><strong>Correspondence</strong></td>
+        <td>20+ templated communications</td>
+        <td>Not implemented</td>
+        <td><span class="badge badge-red">0%</span></td>
+      </tr>
+      <tr>
+        <td><strong>APIs &amp; Integrations</strong></td>
+        <td>15+ integration points</td>
+        <td>Basic case API only</td>
+        <td><span class="badge badge-red">~5%</span></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ─── 1. SALES MANAGEMENT ─── -->
+<section id="sales" class="section">
+  <div class="section-header">
+    <h2>1. Sales Management</h2>
+    <span class="badge badge-red">~90% missing</span>
+  </div>
+
+  <div class="status-box status-exists">
+    <strong>What exists:</strong> A basic pipeline/opportunity UI with Kanban and list views, KPI cards (win rate, pipeline value), and a new opportunity modal. All backed by mock data with no database persistence.
+  </div>
+
+  <h3>Missing Functionality</h3>
+  <ul class="gap-list">
+    <li><strong>Opportunity data model &amp; persistence</strong> — no database table. Blueprint requires detailed fields: Broker Name/Contact, Customer ABN, ASIC Industry code, NMI, annual load forecast, generation capacity, current retailer, tender due date, contract dates, etc. <span class="ref">SM-001</span></li>
+    <li><strong>NMI Discovery integration</strong> — automatic AEMO NMI lookup for all NMIs within an opportunity, with exception logging for mismatches. <span class="ref">SM-002</span></li>
+    <li><strong>ABN lookup integration</strong> — automated ABN validation against the Australian Business Register on opportunity creation. <span class="ref">SM-003</span></li>
+    <li><strong>Opportunity cancellation</strong> — cancellation date and reason recording. <span class="ref">SM-004</span></li>
+    <li><strong>Quote lifecycle workflow</strong> — entire multi-step quoting lifecycle: product type selection (9 energy product types), credit check triggers to Finance Team, pricing requests to Pricing Team, pricing loading (UI or file upload), quote status management (New → Pricing Requested → Pricing Completed → Negotiation → Contracting → Closed Won/Lost). <span class="ref">SM-005 to SM-016</span></li>
+    <li><strong>Quote &amp; Pricing Schedule correspondence</strong> — auto-generated quote documents with mail merge fields (customer name, NMIs, contract dates, pricing summary). <span class="ref">SM-019</span></li>
+    <li><strong>Contract generation</strong> — automatic contract production from accepted quotes, Docusign/e-sign support, contract adjustment before sending. <span class="ref">SM-015, SM-020</span></li>
+    <li><strong>Closed Lost tracking</strong> — configurable close reasons dropdown, successful retailer selection, accepted term recording, close notes, automatic future opportunity creation 6 months prior to contract expiry. <span class="ref">SM-016</span></li>
+    <li><strong>Pricing withdrawal &amp; reprice</strong> — Pricing Team can withdraw pricing at any point; Sales Manager can trigger repricing on original quote. <span class="ref">SM-013, SM-014</span></li>
+    <li><strong>Sales reporting</strong> — Number of RFPs, contract lost volumes and reasons. <span class="ref">SM-021</span></li>
+    <li><strong>Customer Onboarding API</strong> — integration point for account creation from won opportunities. <span class="ref">SM-022</span></li>
+  </ul>
+</section>
+
+<!-- ─── 2. CUSTOMER MANAGEMENT ─── -->
+<section id="customer" class="section">
+  <div class="section-header">
+    <h2>2. Customer Management</h2>
+    <span class="badge badge-red">~85% missing</span>
+  </div>
+
+  <div class="status-box status-exists">
+    <strong>What exists:</strong> Basic Organization, Account, and Contact entities with table and card views. Case management with CRUD, multiple views (list, kanban, tab), filtering, SLA indicators, case linking, file attachments, and activity/communication timelines. All customer data is mock; only the Case model has a database table.
+  </div>
+
+  <h3>Account Creation &amp; Onboarding</h3>
+  <ul class="gap-list">
+    <li><strong>Full account data model</strong> — no persistent Account table. Blueprint requires ABN/ACN, account types (C&amp;I, Occupier), external references, parent/child/grandparent hierarchies, NMI associations, contract dates, site attributes, billing addressee, consolidation flags. <span class="ref">CS-001 to CS-025</span></li>
+    <li><strong>Add New Accounts bulk upload wizard</strong> — file upload for multi-account creation with contact/product inheritance, hierarchy view, validation controls for contacts (CDN, LS, Primary). <span class="ref">CS-001</span></li>
+    <li><strong>Account numbering</strong> — configurable auto-numbering series with format rules. <span class="ref">CS-003</span></li>
+    <li><strong>Market transfer automation</strong> — auto-trigger CR1000 and NMIStandingDataRequest to MSATS upon account creation (up to 65 business days in advance). <span class="ref">CS-008</span></li>
+    <li><strong>Parent/child hierarchy management</strong> — contact inheritance, flag inheritance, terms inheritance, ability to move child to different parent. <span class="ref">CS-016, CS-017</span></li>
+    <li><strong>Occupier account management</strong> — auto-creation of occupier accounts when CS Energy remains FRMP after account closure. <span class="ref">CS-024</span></li>
+    <li><strong>Direct Debit management</strong> — flags, confirmation notices, bill template triggers, payment terms configuration. <span class="ref">CS-013</span></li>
+    <li><strong>Welcome Pack correspondence</strong> — auto-generated introduction letters with portal info, account terms, NMI, parent account number. <span class="ref">CS-022</span></li>
+    <li><strong>Account closure workflow</strong> — Close Account wizard with de-energisation options, service order types, final billing, occupier auto-creation. <span class="ref">CS-010</span></li>
+  </ul>
+
+  <h3>Life Support Module</h3>
+  <ul class="gap-list">
+    <li><strong>Entire life support module</strong> — registration wizard with equipment types, medical confirmation tracking, LSN B2B transactions to distributors, reminder notice cadence (19 business days), extension management, deregistration workflows, quarterly reconciliation with distributors. None of this exists. <span class="ref">CS-029 to CS-040</span></li>
+    <li><strong>Life support correspondence</strong> — information pack, medical confirmation, initial/second reminders, extension confirmation, deregistration notices (7 separate templates). <span class="ref">CS-083 to CS-090</span></li>
+  </ul>
+
+  <h3>Sensitive Load</h3>
+  <ul class="gap-list">
+    <li><strong>Sensitive Load flagging</strong> — checkbox, icon display in account header, CDN/CSDN auto-triggers to distributors, credit control tag management to prevent disconnection and dunning. <span class="ref">CS-027, CS-028</span></li>
+  </ul>
+
+  <h3>Case Management Enhancements</h3>
+  <ul class="gap-list">
+    <li><strong>Email inbox integration</strong> — auto-create cases from monitored CS Energy email inbox with parsing logic, field-mapping, and validation rules. <span class="ref">CS-041</span></li>
+    <li><strong>Web form integration</strong> — create cases from structured form submissions (EWR, enquiry forms, B2B Portal). <span class="ref">CS-041</span></li>
+    <li><strong>Case Class</strong> — mandatory classification (Complaint, General Enquiry, etc.) driving downstream system behaviour. <span class="ref">CS-042</span></li>
+    <li><strong>Auto-acknowledgement emails</strong> — automatic email on case creation with case number, inside and outside business hours variants. <span class="ref">CS-043</span></li>
+    <li><strong>Queue/group assignment</strong> — cases assigned to operator groups/queues with configurable rules; reassignment warnings when attempting to action another user's case. <span class="ref">CS-044</span></li>
+    <li><strong>Configurable contact reasons</strong> — mandatory primary contact reason per case type for reporting and SLA measurement. <span class="ref">CS-045</span></li>
+    <li><strong>Recurring &amp; future-dated cases</strong> — scheduled case creation and future-dated cases with defined start dates. <span class="ref">CS-046</span></li>
+    <li><strong>Portfolio/hierarchy linkage</strong> — parent-level visibility of all portfolio cases; child-level limited to site; Customer Type field. <span class="ref">CS-047</span></li>
+    <li><strong>Service Order integration within cases</strong> — network notices (Planned Interruption), EWR workflows, dunning flows managed as case types. <span class="ref">CS-048</span></li>
+    <li><strong>Action panel in cases</strong> — performing Tally CIS action wizards directly from case context (update contacts, upload documents, bill enquiries). <span class="ref">CS-049</span></li>
+    <li><strong>Bidirectional email in cases</strong> — incoming email parsing and linking to existing cases, configurable templates with mail merge, resend capability, email detail visibility. <span class="ref">CS-050</span></li>
+    <li><strong>Parent-child case structuring</strong> — grouping related issues under a broader case, manual or rule-based grouping. <span class="ref">CS-051</span></li>
+    <li><strong>Document management enhancements</strong> — document expiry dates, central Documents view, navigation from case to Documents tab. <span class="ref">CS-054</span></li>
+    <li><strong>DOA and escalation matrices</strong> — Delegation of Authority and escalation support for defined case management stages. <span class="ref">CS-057</span></li>
+    <li><strong>Contact search in case creation</strong> — search by contact showing existing cases and contact type/role. <span class="ref">CS-058</span></li>
+  </ul>
+
+  <h3>Contract Management</h3>
+  <ul class="gap-list">
+    <li><strong>Contract lifecycle</strong> — renewal monitoring via opportunity management, re-contracting (new contract creation, product/rate card assignment), default rate fallback with exception raising, configurable payment terms (14, 21, 30, 45 calendar days). <span class="ref">CS-059 to CS-061</span></li>
+  </ul>
+
+  <h3>Customer Enquiry &amp; Portal</h3>
+  <ul class="gap-list">
+    <li><strong>C&amp;I Customer Portal</strong> — self-service portal with account info, transactions, statements, interval consumption data, usage analytics, site comparisons, forecast trends, NEM12 data downloads, power factor views, BDR module. <span class="ref">CS-064</span></li>
+    <li><strong>Bill dispute management</strong> — bill holds with dispute reason, credit control tag of Dispute. <span class="ref">CS-066</span></li>
+    <li><strong>Ombudsman flagging</strong> — credit control tag preventing dunning. <span class="ref">CS-067</span></li>
+    <li><strong>Bulk interaction file upload</strong> — add interactions for one or many accounts via spreadsheet. <span class="ref">CS-077</span></li>
+    <li><strong>Activity management</strong> — assignable activities with SLA, follow-up dates, dashboard visibility by role/department. <span class="ref">CS-078, CS-079</span></li>
+    <li><strong>Bulk email capability</strong> — send to customer groups or distribution lists with corporate signatures and self-service templates. <span class="ref">CS-074</span></li>
+  </ul>
+</section>
+
+<!-- ─── 3. MARKET TRANSACTIONS ─── -->
+<section id="market" class="section">
+  <div class="section-header">
+    <h2>3. Market Transactions</h2>
+    <span class="badge badge-red">100% missing</span>
+  </div>
+
+  <div class="status-box status-missing">
+    <strong>Nothing from this section exists in the current CRM.</strong> This is the core AEMO market integration layer for an energy retailer.
+  </div>
+
+  <ul class="gap-list">
+    <li><strong>B2M Change Request lifecycle</strong> — transfer management (CR1000), CR dashboard with status tracking (Waiting, Requested, Objected, Rejected, Cancelled, Pending, Completed), exception management. <span class="ref">MT-001 to MT-011</span></li>
+    <li><strong>B2B Service Orders</strong> — all types: supply service works, re-energisation, de-energisation, special reads, metering service works, miscellaneous. Full request/accept/reject/cancel/response lifecycle. <span class="ref">MT-015 to MT-036</span></li>
+    <li><strong>New Connection workflow</strong> — 10-stage automated workflow: Prepare → New → Allocate NMI → Install → Finalisation → Completed, including MRF, EWR, LSN, CDN steps. <span class="ref">MT-022</span></li>
+    <li><strong>CSDN management</strong> — Customer Site Details Notifications to distributors, daily sending, exception handling. <span class="ref">MT-012 to MT-014</span></li>
+    <li><strong>AEMO MSATS integration</strong> — NMI discovery, service orders, change requests, standing data retrieval, daily C4 report automation. <span class="ref">MT-044</span></li>
+    <li><strong>Transfer correspondence</strong> — Transfer Success letter, Transfer Out Success letter, FRMP Confirmation Notice. <span class="ref">MT-005</span></li>
+    <li><strong>Market transaction reports</strong> — Customer Churn, Gross Sales, Pending Transfers, Transfer Complete, Special Meter Read Failed, Meter Malfunction Exemption Expiry. <span class="ref">MT-038 to MT-043</span></li>
+  </ul>
+</section>
+
+<!-- ─── 4. PRICING ─── -->
+<section id="pricing" class="section">
+  <div class="section-header">
+    <h2>4. Pricing</h2>
+    <span class="badge badge-red">100% missing</span>
+  </div>
+
+  <div class="status-box status-missing">
+    <strong>Nothing from this section exists in the current CRM.</strong>
+  </div>
+
+  <ul class="gap-list">
+    <li><strong>Product/tariff management</strong> — TOU tariffs (peak/shoulder/off-peak), spot pricing products, PPAs, controlled load tariffs, feed-in tariffs, all with MLF and DLF application. <span class="ref">PC-003 to PC-010</span></li>
+    <li><strong>Rate card management</strong> — file upload, bulk onboarding, UI creation/assignment, pricing to 8 decimal places. <span class="ref">PC-031, PC-032</span></li>
+    <li><strong>Renewable Energy Certificates</strong> — LGC, STC, Voluntary LGC products with configurable obligation percentages. <span class="ref">PC-017 to PC-019</span></li>
+    <li><strong>UFE (Unaccounted For Energy)</strong> — monthly calculation, load-weighted averages, washups on settlement data revisions. <span class="ref">PC-008</span></li>
+    <li><strong>Late payment fees</strong> — interest at RBA cash rate + 8% (configurable), compounding from due date, monthly application, customer-specific rates. <span class="ref">PC-025</span></li>
+    <li><strong>AEMO charges</strong> — pool fees (variable $/MWh + fixed $/day), ancillary service charges. <span class="ref">PC-015, PC-016</span></li>
+    <li><strong>Metering charges</strong> — DMA charges, SLA charges, metering administration fees. <span class="ref">PC-012 to PC-014</span></li>
+    <li><strong>Early termination fees, service charges, customer service credits, energy bill relief</strong>. <span class="ref">PC-026 to PC-030</span></li>
+    <li><strong>Tariff Optimisation module</strong> — C&amp;I Portal module for tariff change analysis and savings recommendations. <span class="ref">PC-037</span></li>
+    <li><strong>Pricing reports</strong> — Product &amp; Rates, Product Item Attributes, Account Rate, Accounts on Default Rates, Broker Commission. <span class="ref">PC-040 to PC-044</span></li>
+  </ul>
+</section>
+
+<!-- ─── 5. BILLING ─── -->
+<section id="billing" class="section">
+  <div class="section-header">
+    <h2>5. Billing</h2>
+    <span class="badge badge-red">100% missing</span>
+  </div>
+
+  <div class="status-box status-missing">
+    <strong>Nothing from this section exists in the current CRM.</strong> This is one of the largest functional areas with 83 requirements.
+  </div>
+
+  <h3>Meter Data Management</h3>
+  <ul class="gap-list">
+    <li><strong>Interval data loading</strong> — 5/15/30-minute interval data, data quality methods, multipliers, AEST timezone handling. <span class="ref">BL-001 to BL-006</span></li>
+    <li><strong>PMD/VMD transactions</strong> — Provide Meter Data and Verify Meter Data requests to distributors. <span class="ref">BL-009</span></li>
+    <li><strong>Meter data exceptions</strong> — missing data, incorrect data, ADL thresholds, check meter data streams. <span class="ref">BL-008, BL-012</span></li>
+    <li><strong>Meter data export</strong> — NEM12 XML, standard CSV, simple CSV, detailed CSV formats from CIS and portal. <span class="ref">BL-014</span></li>
+  </ul>
+
+  <h3>Bill Calculation</h3>
+  <ul class="gap-list">
+    <li><strong>Nightly batch billing engine</strong> — automated forecast billing, batch tracker dashboard, billing progression statistics. <span class="ref">BL-023, BL-024</span></li>
+    <li><strong>Bill lifecycle</strong> — Forecast → Draft → Committed/Authorised → Released, with bill holds and preview. <span class="ref">BL-025, BL-028, BL-029</span></li>
+    <li><strong>Bill exceptions</strong> — warnings (40+ types) and errors (25+ types), revenue thresholds, usage variation detection. <span class="ref">BL-026, BL-027</span></li>
+    <li><strong>Bill Explorer</strong> — detailed bill analysis: attributes, category/cost breakdown, meters &amp; data, UFE, NUOS comparison, demand, environmental certificates, calculation details. <span class="ref">BL-030</span></li>
+    <li><strong>Invoice revisions</strong> — automatic calculation from meter data changes, loss factor changes, tariff changes. <span class="ref">BL-031</span></li>
+    <li><strong>Bill reversals &amp; rebills</strong> — sequential reversal, credit notes, configurable month limits. <span class="ref">BL-032</span></li>
+    <li><strong>Embedded network billing</strong> — parent/child netting calculations, separate energy-only billing for children. <span class="ref">BL-018, BL-019</span></li>
+    <li><strong>Greenhouse gas emissions</strong> — CO2 calculation and graphical presentation on bills. <span class="ref">BL-017</span></li>
+  </ul>
+
+  <h3>Bill Presentment</h3>
+  <ul class="gap-list">
+    <li><strong>PDF generation</strong> — invoice templates, unbundled/bundled formats, consolidated statements, consolidated tax invoices. <span class="ref">BL-036, BL-050 to BL-052</span></li>
+    <li><strong>SendGrid email delivery</strong> — HTML email with links, PDF attachments, EDI attachments, delivery/bounce/fail tracking, PDF splitting for 10MB+ invoices. <span class="ref">BL-038, BL-041, BL-042</span></li>
+    <li><strong>EDI file exports</strong> — 4 predefined CSV/XLS formats for electronic data invoices. <span class="ref">BL-039, BL-080</span></li>
+    <li><strong>Bill messages</strong> — configurable per account, bulk upload interface. <span class="ref">BL-048</span></li>
+    <li><strong>Over 25 billing reports</strong> — from Legacy Meter Read Revision to Invoice Reconciliation. <span class="ref">BL-054 to BL-078</span></li>
+  </ul>
+</section>
+
+<!-- ─── 6. PAYMENTS ─── -->
+<section id="payments" class="section">
+  <div class="section-header">
+    <h2>6. Payments &amp; Reconciliations</h2>
+    <span class="badge badge-red">100% missing</span>
+  </div>
+
+  <div class="status-box status-missing">
+    <strong>Nothing from this section exists in the current CRM.</strong>
+  </div>
+
+  <ul class="gap-list">
+    <li><strong>Payment file loading</strong> — daily CSV ingestion of EFT/BPAY/Direct Debit payments from ANZ via SAP/BlackLine/Boomi pipeline, allocation to invoices. <span class="ref">PR-004</span></li>
+    <li><strong>Direct Debit management</strong> — DD flag, bank account recording, triggering on last business day, DD reminder emails (prelim and final). <span class="ref">PR-005 to PR-007</span></li>
+    <li><strong>Dishonour processing</strong> — permanent/temporary dishonour codes, retry configuration, cancellation notices, consecutive dishonour limits. <span class="ref">PR-008</span></li>
+    <li><strong>Refund processing</strong> — via Case Management, transacted in SAP, loaded via payments file. <span class="ref">PR-010</span></li>
+    <li><strong>General Ledger</strong> — Chart of Accounts mapping to Tally CIS GL codes, GL Detail Report for SAP loading. <span class="ref">PR-011</span></li>
+    <li><strong>Aged Trial Balance</strong> — Overdue Accounts Report with debt buckets at 7, 14, 30, 60, 90, 120, 120+ days. <span class="ref">PR-012</span></li>
+    <li><strong>NUoS reconciliation</strong> — automatic loading of network charge invoices, line-item reconciliation and dispute identification. <span class="ref">PR-014</span></li>
+    <li><strong>Payment/finance reports</strong> — Payment Reconciliation by Invoice, Payments Report, Overdue Accounts, GL reports. <span class="ref">PR-017 to PR-028</span></li>
+  </ul>
+</section>
+
+<!-- ─── 7. CREDIT MANAGEMENT ─── -->
+<section id="credit" class="section">
+  <div class="section-header">
+    <h2>7. Credit Management</h2>
+    <span class="badge badge-red">100% missing</span>
+  </div>
+
+  <div class="status-box status-missing">
+    <strong>Nothing from this section exists in the current CRM.</strong>
+  </div>
+
+  <ul class="gap-list">
+    <li><strong>Credit Control Tags</strong> — configurable tags (Complaint, Payment Extension, Write Off, Do Not Bill, Sensitive Load) controlling billing, disconnection, dunning, and fees per account. <span class="ref">CM-001</span></li>
+    <li><strong>Payment extensions</strong> — configurable max days (15 calendar days), max times per year (3), 12-month lookback, original due date retained for dunning. <span class="ref">CM-002</span></li>
+    <li><strong>Payment plans</strong> — setup, maintenance, reporting, correspondence (confirmation, missed instalments, cancellation, completion). <span class="ref">CM-003</span></li>
+    <li><strong>Dunning workflows</strong> — two configurable paths (QGP Accounts vs Other Customers), 3-step reminder notices at due date +2/+10/+20 business days, $50 threshold, dunning locks with reasons, integration with case management for manual escalation steps. <span class="ref">CM-004 to CM-012</span></li>
+    <li><strong>Dunning correspondence</strong> — First, Second, and Third Reminder Notice templates with overdue invoice attachment, configurable contact targeting (Primary vs Contract contact). <span class="ref">CM-007, CM-008, CM-017 to CM-019</span></li>
+    <li><strong>Debt management</strong> — child account level, analysis via Overdue Accounts Report, external DCA referral, status tracking via case management. <span class="ref">CM-013, CM-014</span></li>
+    <li><strong>Debt write-off</strong> — via payments file or billing adjustment, GL code mapping, subsequent recovery processing. <span class="ref">CM-015, CM-016</span></li>
+    <li><strong>Credit management reports</strong> — Overdue Accounts, Arrears on Hold, Payment Plan Summary, Payment Plan Variance, Hardship. <span class="ref">CM-020 to CM-024</span></li>
+  </ul>
+</section>
+
+<!-- ─── 8. NON-FUNCTIONAL ─── -->
+<section id="nonfunctional" class="section">
+  <div class="section-header">
+    <h2>8. Non-Functional &amp; Infrastructure</h2>
+    <span class="badge badge-orange">Significant gaps</span>
+  </div>
+
+  <ul class="gap-list">
+    <li><strong>Authentication &amp; SSO</strong> — no OpenID Connect, no federated identity with Azure AD, no Auth0 integration. Portal and CIS both require SSO. <span class="ref">NF-033, NF-034</span></li>
+    <li><strong>RBAC enforcement</strong> — settings UI exists but permissions are not enforced on API routes or page access. <span class="ref">NF-030</span></li>
+    <li><strong>Audit logging</strong> — no real audit trail for record changes; blueprint requires detailed change tracking with 12-month retention across 20+ tables. <span class="ref">NF-036, NF-037</span></li>
+    <li><strong>Data export</strong> — no CSV/Excel export capability from data tables. <span class="ref">GA-003</span></li>
+    <li><strong>SendGrid integration</strong> — no email sending capability for correspondence, billing, or ad-hoc communications. <span class="ref">GA-012, NF-024</span></li>
+    <li><strong>Webhook system</strong> — no webhook events for external integration (market transactions, account events, invoice status, payments, etc.). <span class="ref">NF-019</span></li>
+    <li><strong>Comprehensive API suite</strong> — only basic case CRUD APIs exist. Blueprint requires public APIs for onboarding, market data, meter data, rate cards, portal, billing adjustments, and more. <span class="ref">NF-017</span></li>
+    <li><strong>Database schema</strong> — only a single <code>Case</code> model in SQLite. A full relational schema is needed for accounts, contacts, contracts, sites, meters, products, rates, invoices, payments, interactions, activities, life support records, service orders, and more. <span class="ref">Multiple</span></li>
+    <li><strong>Multi-environment support</strong> — no UAT/Production separation, no environment-specific email safeguards. <span class="ref">NF-010, GA-008</span></li>
+    <li><strong>Azure cloud hosting</strong> — currently a local Next.js app with SQLite; blueprint expects Azure SQL, Azure Blob Storage, Azure Front Door WAF, geo-replication. <span class="ref">NF-005 to NF-009, NF-047</span></li>
+  </ul>
+</section>
+
+<!-- ─── 9. REPORTING ─── -->
+<section id="reporting" class="section">
+  <div class="section-header">
+    <h2>9. Reporting &amp; Correspondence</h2>
+    <span class="badge badge-red">~95% missing</span>
+  </div>
+
+  <h3>Reporting (60+ named reports required)</h3>
+  <div class="status-box status-exists">
+    <strong>What exists:</strong> Basic dashboard charts (cases by type, SLA performance, pipeline by stage, team workload) and a case summary page with trend charts. No downloadable/parameterised reports.
+  </div>
+
+  <p style="font-size:14px; margin:12px 0;">The blueprint specifies 60+ named reports across all functional areas. None of these exist as downloadable, parameterised reports:</p>
+
+  <ul class="gap-list">
+    <li><strong>General:</strong> Correspondence Failure/Success Reports <span class="ref">GA-R001, GA-R002</span></li>
+    <li><strong>Sales:</strong> Broker Commission Report <span class="ref">SM-R001</span></li>
+    <li><strong>Customer:</strong> Life Support Detail, Occupier Accounts, Master Site, Parent-Child Site, Concession, Customer Interaction, QGP Extract <span class="ref">CS-R001 to CS-R009</span></li>
+    <li><strong>Market:</strong> Customer Churn, Gross Sales, Pending Transfers, Transfer Complete, Special Meter Read Failed, Meter Malfunction <span class="ref">MT-R001 to MT-R006</span></li>
+    <li><strong>Pricing:</strong> Product &amp; Rates, Product Item Attributes, Account Rate, Default Rates, Broker Commission <span class="ref">PC-R001 to PC-R005</span></li>
+    <li><strong>Billing:</strong> 25 reports including Legacy Meter Read, Missing Interval, Accounts First Billed, Credit &amp; Re-bills, Unbilled Usage, Invoice Dispatched, Pre-Bill Extracts, etc. <span class="ref">BL-R001 to BL-R025</span></li>
+    <li><strong>Payments:</strong> Payment Reconciliation by Invoice, Payments, Overdue Accounts, GL Detail, GL Aggregate <span class="ref">PR-R001 to GL-R003</span></li>
+    <li><strong>Credit:</strong> Overdue Accounts, Arrears on Hold, Payment Plan Summary/Variance, Hardship <span class="ref">CM-R001 to CM-R005</span></li>
+  </ul>
+
+  <div class="divider"></div>
+
+  <h3>Correspondence (20+ templates required)</h3>
+  <p style="font-size:14px; margin:12px 0;">No templated correspondence system exists. Required templates include:</p>
+
+  <ul class="gap-list">
+    <li><strong>Sales:</strong> Quote &amp; Pricing Schedule, Contract <span class="ref">SM-C001, SM-C002</span></li>
+    <li><strong>Customer:</strong> Welcome Pack, Life Support letters (7 types), Direct Debit Confirmation <span class="ref">CS-C001 to CS-C010</span></li>
+    <li><strong>Billing:</strong> Unbundled Invoice, Consolidated Statement, Consolidated Tax Invoice, Bill Over/Under Charge Notice <span class="ref">BL-C001 to BL-C004</span></li>
+    <li><strong>Payments:</strong> DD Pre-Reminder (Prelim &amp; Final), Dishonoured DD, DD Cancelled <span class="ref">PR-C001 to PR-C005</span></li>
+    <li><strong>Credit:</strong> First, Second, Third Reminder Notices <span class="ref">CM-C001 to CM-C003</span></li>
+  </ul>
+</section>
+
+<div class="note" style="margin-top: 32px;">
+  <strong>Note:</strong> This analysis compares the current Tally CRM codebase against the CSE Blueprint Replacing Salesforce v0.1 document dated 16 January 2026 (with updates through 11 February 2026). The blueprint describes requirements for the Tally CIS production system. Many of the "missing" items listed here may already exist within the production Tally CIS platform and may not need to be re-built from scratch in this CRM codebase — they would instead require integration or configuration within the existing Tally CIS environment.
+</div>
+
+<footer class="footer">
+  <p>Gap Analysis — Tally CRM vs CSE Blueprint &middot; Generated 25 February 2026</p>
+</footer>
+
+</div>
+</body>
+</html>

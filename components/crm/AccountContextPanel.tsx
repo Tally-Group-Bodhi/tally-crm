@@ -44,7 +44,6 @@ function DataRow({
   label,
   value,
   className,
-  compact,
 }: {
   label: string;
   value: React.ReactNode;
@@ -52,18 +51,16 @@ function DataRow({
   compact?: boolean;
 }) {
   return (
-    <div className={cn("flex flex-col gap-0.5", className)}>
+    <div className={cn("flex items-baseline justify-between gap-3", className)}>
       <span
-        className="font-medium uppercase tracking-wide text-muted-foreground"
+        className="shrink-0 text-muted-foreground"
         style={{ fontSize: "var(--tally-font-size-xs)" }}
       >
         {label}
       </span>
       <span
-        className="text-gray-900 dark:text-gray-100"
-        style={{
-          fontSize: compact ? "var(--tally-font-size-xs)" : "var(--tally-font-size-sm)",
-        }}
+        className="text-right text-gray-900 dark:text-gray-100"
+        style={{ fontSize: "var(--tally-font-size-xs)" }}
       >
         {value}
       </span>
@@ -81,9 +78,9 @@ function BoolRow({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-0.5", className)}>
+    <div className={cn("flex items-center justify-between gap-3", className)}>
       <span
-        className="font-medium uppercase tracking-wide text-muted-foreground"
+        className="shrink-0 text-muted-foreground"
         style={{ fontSize: "var(--tally-font-size-xs)" }}
       >
         {label}
@@ -93,7 +90,10 @@ function BoolRow({
         style={{ fontSize: "var(--tally-font-size-xs)" }}
       >
         {value === true ? (
-          <Icon name="check" size={14} className="inline-block text-green-600 dark:text-green-500" />
+          <span className="flex items-center gap-1 text-green-600 dark:text-green-500">
+            <Icon name="check" size={14} className="inline-block" />
+            <span>Active</span>
+          </span>
         ) : (
           <Icon name="radio_button_unchecked" size={14} className="inline-block text-muted-foreground" />
         )}
@@ -281,49 +281,39 @@ export default function AccountContextPanel({
               </span>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="space-y-2 pt-density-sm">
+              <div className="space-y-1.5 pt-density-sm">
                   <DataRow
-                    label="Legal/Business Name"
+                    label="Legal name"
                     value={account.legalBusinessName ?? "—"}
-                    compact
                   />
-                  <div className="flex flex-col gap-0.5">
-                    <span
-                      className="font-medium uppercase tracking-wide text-muted-foreground"
-                      style={{ fontSize: "var(--tally-font-size-xs)" }}
-                    >
-                      Parent Account
-                    </span>
-                    {account.parentAccountId != null ? (
-                      <Link
-                        href={`/crm/customer/accounts/${account.parentAccountId}`}
-                        className="text-[#2C365D] underline hover:no-underline dark:text-[#7c8cb8]"
-                        style={{ fontSize: "var(--tally-font-size-xs)" }}
-                      >
-                        {account.parentAccountName ?? account.parentAccountId}
-                      </Link>
-                    ) : (
-                      <span
-                        className="text-gray-900 dark:text-gray-100"
-                        style={{ fontSize: "var(--tally-font-size-xs)" }}
-                      >
-                        {account.parentAccountName ?? "—"}
-                      </span>
-                    )}
-                  </div>
-                  <DataRow label="Customer Type" value={account.customerType ?? "—"} compact />
-                  <DataRow label="Account Status" value={account.accountStatus ?? "—"} compact />
-                  <BoolRow label="Is Closed?" value={account.isClosed} />
-                  <BoolRow label="Account Sync Status" value={account.accountSyncStatus} />
-                  <BoolRow label="Consolidate To Parent" value={account.consolidateToParent} />
-                  <BoolRow label="Is Direct Debit" value={account.isDirectDebit} />
-                  <DataRow label="Terms" value={account.terms ?? "—"} compact />
                   <DataRow
-                    label="Service Reference Number"
-                    value={account.serviceReferenceNumber ?? "—"}
-                    compact
+                    label="Parent account"
+                    value={
+                      account.parentAccountId != null ? (
+                        <Link
+                          href={`/crm/customer/accounts/${account.parentAccountId}`}
+                          className="text-[#2C365D] underline hover:no-underline dark:text-[#7c8cb8]"
+                          style={{ fontSize: "var(--tally-font-size-xs)" }}
+                        >
+                          {account.parentAccountName ?? account.parentAccountId}
+                        </Link>
+                      ) : (
+                        account.parentAccountName ?? "—"
+                      )
+                    }
                   />
-                  <BoolRow label="Life Support" value={account.lifeSupport} />
+                  <DataRow label="Customer type" value={account.customerType ?? "—"} />
+                  <DataRow label="Account status" value={account.accountStatus ?? "—"} />
+                  <BoolRow label="Closed" value={account.isClosed} />
+                  <BoolRow label="Sync status" value={account.accountSyncStatus} />
+                  <BoolRow label="Consolidate to parent" value={account.consolidateToParent} />
+                  <BoolRow label="Direct debit" value={account.isDirectDebit} />
+                  <DataRow label="Terms" value={account.terms ?? "—"} />
+                  <DataRow
+                    label="Service ref"
+                    value={account.serviceReferenceNumber ?? "—"}
+                  />
+                  <BoolRow label="Life support" value={account.lifeSupport} />
                 </div>
               </CollapsibleContent>
             </Collapsible>
@@ -350,10 +340,10 @@ export default function AccountContextPanel({
                 </span>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <div className="space-y-2 pt-density-sm">
-                  <div className="space-y-2">
+                <div className="space-y-1.5 pt-density-sm">
+                  <div className="space-y-1.5">
                     <span
-                      className="font-medium uppercase tracking-wide text-muted-foreground"
+                      className="text-muted-foreground"
                       style={{ fontSize: "var(--tally-font-size-xs)" }}
                     >
                       NMI{account.nmis.length > 1 ? "s" : ""}
@@ -373,12 +363,11 @@ export default function AccountContextPanel({
                       </div>
                     ))}
                   </div>
-                  <DataRow label="Energy Type" value={account.energyType} compact />
-                  <DataRow label="Address" value={account.address} compact />
+                  <DataRow label="Energy type" value={account.energyType} />
+                  <DataRow label="Address" value={account.address} />
                   <DataRow
-                    label="Annual Consumption"
+                    label="Annual consumption"
                     value={account.annualConsumption}
-                    compact
                   />
                 </div>
               </CollapsibleContent>
@@ -406,9 +395,9 @@ export default function AccountContextPanel({
               </span>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="space-y-2 pt-density-sm">
+              <div className="space-y-1.5 pt-density-sm">
                 <DataRow
-                  label="Account Balance"
+                  label="Account balance"
                   value={
                     <span
                       className={cn(
@@ -417,22 +406,18 @@ export default function AccountContextPanel({
                           ? "text-[#C40000]"
                           : "text-[#008000]"
                       )}
-                      style={{ fontSize: "var(--tally-font-size-xs)" }}
                     >
                       {account.accountBalance}
                     </span>
                   }
-                  compact
                 />
                 <DataRow
-                  label="Last Payment"
-                  value={`${account.lastPaymentAmount} on ${account.lastPaymentDate}`}
-                  compact
+                  label="Last payment"
+                  value={`${account.lastPaymentAmount} · ${account.lastPaymentDate}`}
                 />
                 <DataRow
-                  label="Contract End"
+                  label="Contract end"
                   value={account.contractEndDate}
-                  compact
                 />
               </div>
             </CollapsibleContent>

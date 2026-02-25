@@ -77,8 +77,6 @@ type ListViewId =
   | "my"
   | "my_open"
   | "recently_viewed"
-  | "recently_viewed_cases"
-  | "support_queue"
   | "unassigned";
 
 const LIST_VIEWS: { id: ListViewId; label: string; pinned?: boolean }[] = [
@@ -87,8 +85,6 @@ const LIST_VIEWS: { id: ListViewId; label: string; pinned?: boolean }[] = [
   { id: "my", label: "My Cases" },
   { id: "my_open", label: "My Open Cases" },
   { id: "recently_viewed", label: "Recently Viewed" },
-  { id: "recently_viewed_cases", label: "Recently Viewed Cases" },
-  { id: "support_queue", label: "Support Queue" },
   { id: "unassigned", label: "Unassigned" },
 ];
 type SortField = "caseNumber" | "accountName" | "type" | "status" | "priority" | "slaStatus" | "owner" | "createdDate";
@@ -180,6 +176,8 @@ export default function CaseListPage() {
   const [typeFilter, setTypeFilter] = React.useState<string[]>([]);
   const [ownerFilter, setOwnerFilter] = React.useState<string[]>([]);
   const [slaFilter, setSlaFilter] = React.useState<string[]>([]);
+  type CaseRelationship = "parent" | "child" | "standalone";
+  const [relationshipFilter, setRelationshipFilter] = React.useState<CaseRelationship[]>([]);
   const [sortField, setSortField] = React.useState<SortField>("createdDate");
   const [sortDir, setSortDir] = React.useState<SortDirection>("desc");
   const [filtersOpen, setFiltersOpen] = React.useState(false);
@@ -302,10 +300,7 @@ export default function CaseListPage() {
       case "unassigned":
         result = result.filter((c) => c.owner === "Unassigned");
         break;
-      case "support_queue":
-        result = result.filter((c) => c.team === "Large Market Support");
-        break;
-      // "all", "recently_viewed", "recently_viewed_cases" show all for now
+      // "all", "recently_viewed" show all for now
       default:
         break;
     }
@@ -317,6 +312,18 @@ export default function CaseListPage() {
     if (typeFilter.length > 0) result = result.filter((c) => typeFilter.includes(c.type));
     if (ownerFilter.length > 0) result = result.filter((c) => ownerFilter.includes(c.owner));
     if (slaFilter.length > 0) result = result.filter((c) => slaFilter.includes(c.slaStatus));
+    if (relationshipFilter.length > 0) {
+      result = result.filter((c) => {
+        const isParent = c.childCaseIds && c.childCaseIds.length > 0;
+        const isChild = !!c.parentCaseId;
+        const isStandalone = !isParent && !isChild;
+        return (
+          (relationshipFilter.includes("parent") && isParent) ||
+          (relationshipFilter.includes("child") && isChild) ||
+          (relationshipFilter.includes("standalone") && isStandalone)
+        );
+      });
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -353,7 +360,7 @@ export default function CaseListPage() {
     });
 
     return result;
-  }, [cases, listView, accountFilter, searchQuery, statusFilter, priorityFilter, typeFilter, ownerFilter, slaFilter, sortField, sortDir]);
+  }, [cases, listView, accountFilter, searchQuery, statusFilter, priorityFilter, typeFilter, ownerFilter, slaFilter, relationshipFilter, sortField, sortDir]);
 
   // In Tab view, keep selection in sync with filtered list (e.g. when filters change)
   React.useEffect(() => {
@@ -875,6 +882,52 @@ export default function CaseListPage() {
               })}
             </PopoverContent>
           </Popover>
+          <Popover>
+            <PopoverTrigger
+              type="button"
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border border-border bg-white px-3 py-1.5 font-medium transition-colors dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100",
+                relationshipFilter.length > 0
+                  ? "border-[#006180] bg-[#E6F7FF] text-[#006180] dark:border-[#80E0FF] dark:bg-[#006180]/20 dark:text-[#80E0FF]"
+                  : "hover:border-[#006180] hover:bg-[#E6F7FF] hover:text-[#006180] dark:hover:border-[#80E0FF] dark:hover:bg-[#006180]/20 dark:hover:text-[#80E0FF]"
+              )}
+              style={{ fontSize: "var(--tally-font-size-xs)" }}
+            >
+              {relationshipFilter.length === 0 ? "Hierarchy" : `Hierarchy (${relationshipFilter.length})`}
+              <Icon name="expand_more" size={14} className="shrink-0" />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="min-w-[180px] p-1">
+              <button
+                type="button"
+                onClick={() => setRelationshipFilter([])}
+                className="w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Clear
+              </button>
+              {([
+                { key: "parent" as const, label: "Parent Cases", icon: "account_tree" },
+                { key: "child" as const, label: "Child Cases", icon: "subdirectory_arrow_right" },
+                { key: "standalone" as const, label: "Standalone Cases", icon: "description" },
+              ]).map(({ key, label, icon }) => {
+                const selected = relationshipFilter.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setRelationshipFilter((prev) => (selected ? prev.filter((x) => x !== key) : [...prev, key]))}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
+                      selected ? "bg-[#E6F7FF] text-[#006180] dark:bg-[#006180]/20 dark:text-[#80E0FF]" : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                    )}
+                  >
+                    {selected && <Icon name="check" size={14} className="shrink-0" />}
+                    <Icon name={icon} size={14} className="shrink-0 text-muted-foreground" />
+                    <span className={cn(selected ? "font-medium" : "")}>{label}</span>
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
           <button
             type="button"
             onClick={() => {
@@ -885,6 +938,7 @@ export default function CaseListPage() {
               setTypeFilter([]);
               setOwnerFilter([]);
               setSlaFilter([]);
+              setRelationshipFilter([]);
             }}
             className="inline-flex items-baseline underline text-muted-foreground hover:text-[#006180] dark:hover:text-[#80E0FF] leading-none py-0"
             style={{ fontSize: "var(--tally-font-size-xs)" }}
@@ -1013,6 +1067,17 @@ export default function CaseListPage() {
                       >
                         {caseItem.caseNumber}
                       </Link>
+                      {caseItem.parentCaseNumber && (
+                        <Link
+                          href={`/crm/cases/${caseItem.parentCaseId}`}
+                          className="mt-0.5 flex items-center gap-1 text-muted-foreground hover:text-[#006180] dark:hover:text-[#80E0FF]"
+                          style={{ fontSize: "var(--tally-font-size-xs)" }}
+                          title={`Parent case: ${caseItem.parentCaseNumber}`}
+                        >
+                          <Icon name="account_tree" size={12} className="shrink-0" />
+                          <span className="truncate">Child of {caseItem.parentCaseNumber}</span>
+                        </Link>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate text-gray-700 dark:text-gray-300">
                       {caseItem.accountName}
@@ -1070,16 +1135,6 @@ export default function CaseListPage() {
             <span>
               Showing {filtered.length} of {cases.length} cases
             </span>
-            <div className="flex items-center gap-density-lg">
-              <span className="flex items-center gap-density-xs">
-                <span className="inline-block h-2 w-2 rounded-full bg-[#C40000]" />
-                {cases.filter((c) => c.slaStatus === "Breached").length} breached
-              </span>
-              <span className="flex items-center gap-density-xs">
-                <span className="inline-block h-2 w-2 rounded-full bg-[#C53B00]" />
-                {cases.filter((c) => c.slaStatus === "At Risk").length} at risk
-              </span>
-            </div>
           </div>
         </>
       )}
@@ -1259,6 +1314,12 @@ function CaseKanbanCard({
       <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
         {caseItem.accountName}
       </p>
+      {caseItem.parentCaseNumber && (
+        <p className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-[#006180] dark:text-[#80E0FF]">
+          <Icon name="account_tree" size={11} className="shrink-0" />
+          Child of {caseItem.parentCaseNumber}
+        </p>
+      )}
 
       {/* Type + SLA row */}
       <div className="mt-2 flex items-center justify-between">

@@ -61,7 +61,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/Table/Table";
-import { getCaseByCaseNumber } from "@/lib/mock-data/cases";
+import { getCaseByCaseNumber, getCaseById } from "@/lib/mock-data/cases";
 import { getAccountById, getOrgById, getAccountsByOrgId } from "@/lib/mock-data/accounts";
 import type { Account, Activity, CaseItem, CasePriority, CaseStatus, Communication, Contact } from "@/types/crm";
 
@@ -191,7 +191,10 @@ export default function CaseDetailContent({
     },
     [onCloseCallLogPanel]
   );
-  const resolveCase = (caseNum: string) => relatedCasesMap?.get(caseNum) ?? getCaseByCaseNumber(caseNum);
+  const resolveCase = React.useCallback(
+    (caseNum: string) => relatedCasesMap?.get(caseNum) ?? getCaseByCaseNumber(caseNum),
+    [relatedCasesMap]
+  );
   const relatedCaseNumbers = relatedCaseNumbersProp ?? caseItem.relatedCases;
   const [activeTab, setActiveTab] = React.useState("request");
   const [updating, setUpdating] = React.useState(false);
@@ -218,6 +221,7 @@ export default function CaseDetailContent({
   const expandedContactRef = React.useRef<HTMLDivElement>(null);
   const [isEditingDescription, setIsEditingDescription] = React.useState(false);
   const [draftDescription, setDraftDescription] = React.useState("");
+  const [showFullThread, setShowFullThread] = React.useState(true);
 
   React.useEffect(() => {
     setLocalContacts(account.contacts);
@@ -233,16 +237,64 @@ export default function CaseDetailContent({
     setLocalRelatedCaseNumbers(relatedCaseNumbers);
   }, [relatedCaseNumbers, caseItem.id]);
 
+  const linkedCases = React.useMemo(() => {
+    const cases: CaseItem[] = [];
+    if (caseItem.parentCaseId && caseItem.parentCaseNumber) {
+      const parent = resolveCase(caseItem.parentCaseNumber);
+      if (parent) cases.push(parent);
+    }
+    if (caseItem.childCaseIds) {
+      for (const childId of caseItem.childCaseIds) {
+        if (cases.some((c) => c.id === childId)) continue;
+        if (relatedCasesMap) {
+          for (const c of relatedCasesMap.values()) {
+            if (c.id === childId) { cases.push(c); break; }
+          }
+        }
+        if (!cases.some((c) => c.id === childId)) {
+          const found = getCaseById(childId);
+          if (found) cases.push(found);
+        }
+      }
+    }
+    return cases;
+  }, [caseItem.parentCaseId, caseItem.parentCaseNumber, caseItem.childCaseIds, relatedCasesMap, resolveCase]);
+
+  const hasLinkedComms = linkedCases.some((c) => c.communications.length > 0);
+
+  const mergedCommunications = React.useMemo<Communication[]>(() => {
+    const thisComms: Communication[] = caseItem.communications.map((c) => ({
+      ...c,
+      sourceCaseId: c.sourceCaseId ?? caseItem.id,
+      sourceCaseNumber: c.sourceCaseNumber ?? caseItem.caseNumber,
+    }));
+
+    if (!showFullThread || linkedCases.length === 0) return thisComms;
+
+    const linkedComms: Communication[] = linkedCases.flatMap((linked) =>
+      linked.communications.map((c) => ({
+        ...c,
+        sourceCaseId: c.sourceCaseId ?? linked.id,
+        sourceCaseNumber: c.sourceCaseNumber ?? linked.caseNumber,
+      }))
+    );
+
+    const seen = new Set(thisComms.map((c) => c.id));
+    const deduped = linkedComms.filter((c) => !seen.has(c.id));
+
+    return [...thisComms, ...deduped];
+  }, [caseItem.communications, caseItem.id, caseItem.caseNumber, showFullThread, linkedCases]);
+
   const COMM_UNASSIGNED_LABEL = "—";
   const communicationsUniqueUsers = React.useMemo(() => {
     const set = new Set<string>();
-    caseItem.communications.forEach((c) => set.add(c.loggedBy?.trim() || COMM_UNASSIGNED_LABEL));
+    mergedCommunications.forEach((c) => set.add(c.loggedBy?.trim() || COMM_UNASSIGNED_LABEL));
     return Array.from(set).sort((a, b) =>
       a === COMM_UNASSIGNED_LABEL ? 1 : b === COMM_UNASSIGNED_LABEL ? -1 : a.localeCompare(b)
     );
-  }, [caseItem.communications]);
+  }, [mergedCommunications]);
   const filteredCommunications = React.useMemo(() => {
-    let list = caseItem.communications;
+    let list = mergedCommunications;
     if (communicationsFilterTab !== "all") {
       const typeByTab: Record<Exclude<CommFilterTab, "all">, Communication["type"]> = {
         notes: "Note",
@@ -270,7 +322,7 @@ export default function CaseDetailContent({
     }
     return list;
   }, [
-    caseItem.communications,
+    mergedCommunications,
     communicationsFilterTab,
     communicationsSearchQuery,
     communicationsSelectedUsers,
@@ -379,6 +431,16 @@ export default function CaseDetailContent({
               >
                 {caseItem.type}
               </Badge>
+              {caseItem.parentCaseNumber && (
+                <Link
+                  href={`/crm/cases/${caseItem.parentCaseId}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-[#006180]/20 bg-[#006180]/5 px-2 py-0.5 text-[#006180] transition-colors hover:bg-[#006180]/10 dark:border-[#0091BF]/25 dark:bg-[#0091BF]/10 dark:text-[#80E0FF] dark:hover:bg-[#0091BF]/20"
+                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                >
+                  <Icon name="subdirectory_arrow_right" size={13} className="shrink-0" />
+                  <span>Parent: {caseItem.parentCaseNumber}</span>
+                </Link>
+              )}
             </div>
             <p
               className="mt-1 text-muted-foreground"
@@ -937,10 +999,30 @@ export default function CaseDetailContent({
               )}
             </div>
           </div>
+          {hasLinkedComms && (
+            <div className="mb-3 flex items-center gap-2 rounded-lg border border-[#006180]/15 bg-[#006180]/[0.03] px-4 py-2 dark:border-[#0091BF]/20 dark:bg-[#0091BF]/[0.04]">
+              <Icon name="account_tree" size={16} className="shrink-0 text-[#006180] dark:text-[#80E0FF]" />
+              <span
+                className="flex-1 text-gray-700 dark:text-gray-300"
+                style={{ fontSize: "var(--tally-font-size-sm)" }}
+              >
+                {showFullThread ? "Showing full thread history across linked cases" : "Showing this case only"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowFullThread((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#006180]/25 bg-white px-2.5 py-1 text-xs font-medium text-[#006180] transition-colors hover:bg-[#006180]/5 dark:border-[#0091BF]/30 dark:bg-gray-900 dark:text-[#80E0FF] dark:hover:bg-[#0091BF]/10"
+              >
+                <Icon name={showFullThread ? "visibility_off" : "visibility"} size={14} className="shrink-0" />
+                {showFullThread ? "This case only" : "Full thread history"}
+              </button>
+            </div>
+          )}
           <CommunicationTimeline
             communications={filteredCommunications}
             expandedIds={communicationsExpandedIds}
             onExpandedIdsChange={setCommunicationsExpandedIds}
+            currentCaseNumber={caseItem.caseNumber}
           />
           {filteredCommunications.length === 0 && (
             <p
@@ -1423,152 +1505,325 @@ export default function CaseDetailContent({
                 </DialogContent>
               </Dialog>
             </div>
-            <div className="rounded-lg border border-border bg-white p-4 lg:col-span-2 dark:border-gray-700 dark:bg-gray-900">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <h3
-                  className="font-bold text-gray-900 dark:text-gray-100"
-                  style={{ fontSize: "var(--tally-font-size-sm)" }}
-                >
-                  Related Cases (
-                  {
-                    localRelatedCaseNumbers.filter((caseNum) => {
-                      const c = resolveCase(caseNum);
-                      return c && getAccountById(c.accountId)?.orgId === account.orgId;
-                    }).length
-                  }
-                  )
-                </h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRelatedCasesEditMode((prev) => !prev)}
-                    className="underline text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
-                    style={{ fontSize: "var(--tally-font-size-xs)" }}
-                    title={relatedCasesEditMode ? "Done editing" : "Edit related cases"}
-                  >
-                    {relatedCasesEditMode ? "Cancel" : "Edit"}
-                  </button>
-                  {onOpenLinkModal && (
-                    <Button variant="outline" size="sm" className="gap-1" onClick={onOpenLinkModal}>
-                      <Icon name="link" size={14} />
-                      Link case
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {(() => {
-                const relatedSameOrg = localRelatedCaseNumbers.filter((caseNum) => {
-                  const c = resolveCase(caseNum);
-                  return c != null && getAccountById(c.accountId)?.orgId === account.orgId;
-                });
-                return relatedSameOrg.length > 0 ? (
-                  <div className="overflow-hidden rounded-density-md border border-border dark:border-gray-700">
-                    <Table dense>
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Case #</TableHead>
-                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Account</TableHead>
-                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Type</TableHead>
-                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
-                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Priority</TableHead>
-                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>SLA</TableHead>
-                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Owner</TableHead>
-                          <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Created</TableHead>
-                          <TableHead className="w-10" style={{ fontSize: "var(--tally-font-size-xs)" }} aria-label="Open in new window">
-                            <span className="sr-only">Open in new window</span>
-                          </TableHead>
-                          {relatedCasesEditMode && (
-                            <TableHead className="w-20" aria-label="Remove from list">
-                              <span className="sr-only">Remove</span>
-                            </TableHead>
-                          )}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {relatedSameOrg.map((caseNum) => {
-                          const linkedCase = resolveCase(caseNum);
-                          if (!linkedCase) return null;
-                          return (
-                            <TableRow key={linkedCase.id} className="group">
+            <div className="space-y-4 lg:col-span-2">
+              {/* Parent Case */}
+              {caseItem.parentCaseId && caseItem.parentCaseNumber && (() => {
+                const parentCase = resolveCase(caseItem.parentCaseNumber);
+                return (
+                  <div className="rounded-lg border border-[#006180]/20 bg-[#006180]/5 p-4 dark:border-[#0091BF]/25 dark:bg-[#0091BF]/10">
+                    <h3
+                      className="mb-3 flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100"
+                      style={{ fontSize: "var(--tally-font-size-sm)" }}
+                    >
+                      <Icon name="account_tree" size={16} className="text-[#006180] dark:text-[#80E0FF]" />
+                      Parent Case
+                    </h3>
+                    {parentCase ? (
+                      <div className="overflow-hidden rounded-density-md border border-border dark:border-gray-700">
+                        <Table dense>
+                          <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                              <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Case #</TableHead>
+                              <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Account</TableHead>
+                              <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Type</TableHead>
+                              <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
+                              <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>SLA</TableHead>
+                              <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Owner</TableHead>
+                              <TableHead className="w-10" style={{ fontSize: "var(--tally-font-size-xs)" }} aria-label="Open">
+                                <span className="sr-only">Open</span>
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            <TableRow>
                               <TableCell>
                                 <Link
-                                  href={`/crm/cases/${linkedCase.id}`}
+                                  href={`/crm/cases/${parentCase.id}`}
                                   className="font-medium text-[#2C365D] hover:underline dark:text-[#7c8cb8]"
                                   style={{ fontSize: "var(--tally-font-size-sm)" }}
                                 >
-                                  {linkedCase.caseNumber}
+                                  {parentCase.caseNumber}
                                 </Link>
                               </TableCell>
                               <TableCell className="max-w-[200px] truncate text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
-                                {linkedCase.accountName}
+                                {parentCase.accountName}
                               </TableCell>
                               <TableCell>
-                                <Badge variant="outline" style={{ fontSize: "var(--tally-font-size-xs)" }}>
-                                  {linkedCase.type}
-                                </Badge>
+                                <Badge variant="outline" style={{ fontSize: "var(--tally-font-size-xs)" }}>{parentCase.type}</Badge>
                               </TableCell>
                               <TableCell>
-                                <RelatedCaseStatusBadge status={linkedCase.status} />
+                                <RelatedCaseStatusBadge status={parentCase.status} />
                               </TableCell>
                               <TableCell>
-                                <Badge variant={priorityVariant[linkedCase.priority]} style={{ fontSize: "var(--tally-font-size-xs)" }}>
-                                  {linkedCase.priority}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <SLAIndicator
-                                  status={linkedCase.slaStatus}
-                                  timeRemaining={linkedCase.slaTimeRemaining}
-                                />
+                                <SLAIndicator status={parentCase.slaStatus} timeRemaining={parentCase.slaTimeRemaining} />
                               </TableCell>
                               <TableCell className="text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
-                                {linkedCase.owner}
-                              </TableCell>
-                              <TableCell className="text-gray-500 dark:text-gray-400" style={{ fontSize: "var(--tally-font-size-sm)" }}>
-                                {linkedCase.createdDate}
+                                {parentCase.owner}
                               </TableCell>
                               <TableCell className="w-10">
                                 <Link
-                                  href={`/crm/cases/${linkedCase.id}`}
+                                  href={`/crm/cases/${parentCase.id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
                                   title="Open in new window"
-                                  aria-label={`Open ${linkedCase.caseNumber} in new window`}
                                 >
                                   <Icon name="open_in_new" size={18} />
                                 </Link>
                               </TableCell>
-                              {relatedCasesEditMode && (
-                                <TableCell className="w-20">
-                                  <button
-                                    type="button"
-                                    onClick={() => setRelatedCaseToRemove(linkedCase.caseNumber)}
-                                    className="underline text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                    style={{ fontSize: "var(--tally-font-size-xs)" }}
-                                    title="Remove from related cases"
-                                  >
-                                    Remove
-                                  </button>
-                                </TableCell>
-                              )}
                             </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                        <Link href={`/crm/cases/${caseItem.parentCaseId}`} className="font-medium text-[#006180] underline hover:no-underline dark:text-[#80E0FF]">
+                          {caseItem.parentCaseNumber}
+                        </Link>
+                      </p>
+                    )}
                   </div>
-                ) : (
-                  <p
-                    className="py-4 text-center text-muted-foreground"
-                    style={{ fontSize: "var(--tally-font-size-sm)" }}
-                  >
-                    {onOpenLinkModal
-                      ? "No related cases. Use \"Link case\" to add one from the same organisation."
-                      : "No related cases in the same organisation."}
-                  </p>
                 );
               })()}
+
+              {/* Child Cases */}
+              {caseItem.childCaseIds && caseItem.childCaseIds.length > 0 && (() => {
+                const childCases = caseItem.childCaseIds
+                  .map((id) => {
+                    if (relatedCasesMap) {
+                      for (const c of relatedCasesMap.values()) { if (c.id === id) return c; }
+                    }
+                    return null;
+                  })
+                  .filter((c): c is CaseItem => c != null);
+
+                if (childCases.length === 0) return null;
+
+                return (
+                  <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+                    <h3
+                      className="mb-3 flex items-center gap-2 font-bold text-gray-900 dark:text-gray-100"
+                      style={{ fontSize: "var(--tally-font-size-sm)" }}
+                    >
+                      <Icon name="subdirectory_arrow_right" size={16} className="text-muted-foreground" />
+                      Child Cases ({childCases.length})
+                    </h3>
+                    <div className="overflow-hidden rounded-density-md border border-border dark:border-gray-700">
+                      <Table dense>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Case #</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Type</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Priority</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>SLA</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Owner</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Created</TableHead>
+                            <TableHead className="w-10" style={{ fontSize: "var(--tally-font-size-xs)" }} aria-label="Open">
+                              <span className="sr-only">Open</span>
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {childCases.map((child) => (
+                            <TableRow key={child.id} className="group">
+                              <TableCell>
+                                <Link
+                                  href={`/crm/cases/${child.id}`}
+                                  className="font-medium text-[#2C365D] hover:underline dark:text-[#7c8cb8]"
+                                  style={{ fontSize: "var(--tally-font-size-sm)" }}
+                                >
+                                  {child.caseNumber}
+                                </Link>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" style={{ fontSize: "var(--tally-font-size-xs)" }}>{child.type}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                <RelatedCaseStatusBadge status={child.status} />
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={priorityVariant[child.priority]} style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                  {child.priority}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <SLAIndicator status={child.slaStatus} timeRemaining={child.slaTimeRemaining} />
+                              </TableCell>
+                              <TableCell className="text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                {child.owner}
+                              </TableCell>
+                              <TableCell className="text-gray-500 dark:text-gray-400" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                {child.createdDate}
+                              </TableCell>
+                              <TableCell className="w-10">
+                                <Link
+                                  href={`/crm/cases/${child.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
+                                  title="Open in new window"
+                                >
+                                  <Icon name="open_in_new" size={18} />
+                                </Link>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Related Cases (peer links — excludes parent/child) */}
+              <div className="rounded-lg border border-border bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h3
+                    className="font-bold text-gray-900 dark:text-gray-100"
+                    style={{ fontSize: "var(--tally-font-size-sm)" }}
+                  >
+                    Related Cases (
+                    {
+                      localRelatedCaseNumbers.filter((caseNum) => {
+                        const c = resolveCase(caseNum);
+                        return c && getAccountById(c.accountId)?.orgId === account.orgId;
+                      }).length
+                    }
+                    )
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRelatedCasesEditMode((prev) => !prev)}
+                      className="underline text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
+                      style={{ fontSize: "var(--tally-font-size-xs)" }}
+                      title={relatedCasesEditMode ? "Done editing" : "Edit related cases"}
+                    >
+                      {relatedCasesEditMode ? "Cancel" : "Edit"}
+                    </button>
+                    {onOpenLinkModal && (
+                      <Button variant="outline" size="sm" className="gap-1" onClick={onOpenLinkModal}>
+                        <Icon name="link" size={14} />
+                        Link case
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                {(() => {
+                  const relatedSameOrg = localRelatedCaseNumbers.filter((caseNum) => {
+                    const c = resolveCase(caseNum);
+                    return c != null && getAccountById(c.accountId)?.orgId === account.orgId;
+                  });
+                  return relatedSameOrg.length > 0 ? (
+                    <div className="overflow-hidden rounded-density-md border border-border dark:border-gray-700">
+                      <Table dense>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Case #</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Account</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Type</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Priority</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>SLA</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Owner</TableHead>
+                            <TableHead style={{ fontSize: "var(--tally-font-size-xs)" }}>Created</TableHead>
+                            <TableHead className="w-10" style={{ fontSize: "var(--tally-font-size-xs)" }} aria-label="Open in new window">
+                              <span className="sr-only">Open in new window</span>
+                            </TableHead>
+                            {relatedCasesEditMode && (
+                              <TableHead className="w-20" aria-label="Remove from list">
+                                <span className="sr-only">Remove</span>
+                              </TableHead>
+                            )}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {relatedSameOrg.map((caseNum) => {
+                            const linkedCase = resolveCase(caseNum);
+                            if (!linkedCase) return null;
+                            return (
+                              <TableRow key={linkedCase.id} className="group">
+                                <TableCell>
+                                  <Link
+                                    href={`/crm/cases/${linkedCase.id}`}
+                                    className="font-medium text-[#2C365D] hover:underline dark:text-[#7c8cb8]"
+                                    style={{ fontSize: "var(--tally-font-size-sm)" }}
+                                  >
+                                    {linkedCase.caseNumber}
+                                  </Link>
+                                </TableCell>
+                                <TableCell className="max-w-[200px] truncate text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                  {linkedCase.accountName}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                    {linkedCase.type}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <RelatedCaseStatusBadge status={linkedCase.status} />
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={priorityVariant[linkedCase.priority]} style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                    {linkedCase.priority}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <SLAIndicator
+                                    status={linkedCase.slaStatus}
+                                    timeRemaining={linkedCase.slaTimeRemaining}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                  {linkedCase.owner}
+                                </TableCell>
+                                <TableCell className="text-gray-500 dark:text-gray-400" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                  {linkedCase.createdDate}
+                                </TableCell>
+                                <TableCell className="w-10">
+                                  <Link
+                                    href={`/crm/cases/${linkedCase.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex text-muted-foreground hover:text-[#2C365D] dark:hover:text-[#7c8cb8]"
+                                    title="Open in new window"
+                                    aria-label={`Open ${linkedCase.caseNumber} in new window`}
+                                  >
+                                    <Icon name="open_in_new" size={18} />
+                                  </Link>
+                                </TableCell>
+                                {relatedCasesEditMode && (
+                                  <TableCell className="w-20">
+                                    <button
+                                      type="button"
+                                      onClick={() => setRelatedCaseToRemove(linkedCase.caseNumber)}
+                                      className="underline text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                      style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                      title="Remove from related cases"
+                                    >
+                                      Remove
+                                    </button>
+                                  </TableCell>
+                                )}
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  ) : (
+                    <p
+                      className="py-4 text-center text-muted-foreground"
+                      style={{ fontSize: "var(--tally-font-size-sm)" }}
+                    >
+                      {onOpenLinkModal
+                        ? "No related cases. Use \"Link case\" to add one from the same organisation."
+                        : "No related cases in the same organisation."}
+                    </p>
+                  );
+                })()}
+              </div>
             </div>
           </div>
         </TabsContent>

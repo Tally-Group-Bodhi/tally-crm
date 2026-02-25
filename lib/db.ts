@@ -50,6 +50,9 @@ export function prismaCaseToCaseItem(row: {
   activities: string | null;
   attachments: string | null;
   relatedCases: string | null;
+  parentCaseId: string | null;
+  parentCaseNumber: string | null;
+  childCaseIds: string | null;
   pendingReason: string | null;
   descriptionHistory: string | null;
 }): CaseItem {
@@ -75,6 +78,9 @@ export function prismaCaseToCaseItem(row: {
     activities: row.activities ? JSON.parse(row.activities) : [],
     attachments: row.attachments ? JSON.parse(row.attachments) : [],
     relatedCases: row.relatedCases ? JSON.parse(row.relatedCases) : [],
+    ...(row.parentCaseId && { parentCaseId: row.parentCaseId }),
+    ...(row.parentCaseNumber && { parentCaseNumber: row.parentCaseNumber }),
+    ...(row.childCaseIds && { childCaseIds: JSON.parse(row.childCaseIds) as string[] }),
     ...(row.pendingReason && { pendingReason: row.pendingReason as CaseItem["pendingReason"] }),
     ...(row.descriptionHistory && { descriptionHistory: JSON.parse(row.descriptionHistory) as CaseItem["descriptionHistory"] }),
   };
@@ -103,6 +109,9 @@ export function caseItemToPrismaPayload(item: CaseItem) {
     activities: JSON.stringify(item.activities ?? []),
     attachments: JSON.stringify(item.attachments ?? []),
     relatedCases: JSON.stringify(item.relatedCases ?? []),
+    parentCaseId: item.parentCaseId ?? null,
+    parentCaseNumber: item.parentCaseNumber ?? null,
+    childCaseIds: item.childCaseIds ? JSON.stringify(item.childCaseIds) : null,
     pendingReason: item.pendingReason ?? null,
     descriptionHistory: item.descriptionHistory ? JSON.stringify(item.descriptionHistory) : null,
   };
@@ -117,6 +126,7 @@ export function caseItemPartialToPrismaUpdate(
     "caseNumber", "accountId", "accountName", "type", "subType", "status", "priority",
     "slaStatus", "slaDeadline", "slaTimeRemaining", "owner", "team",
     "createdDate", "updatedDate", "description", "resolution", "pendingReason",
+    "parentCaseId", "parentCaseNumber",
   ] as const;
   for (const k of scalarKeys) {
     if (item[k] !== undefined) (out[k] as unknown) = item[k];
@@ -125,6 +135,7 @@ export function caseItemPartialToPrismaUpdate(
   if (item.activities !== undefined) out.activities = JSON.stringify(item.activities);
   if (item.attachments !== undefined) out.attachments = JSON.stringify(item.attachments);
   if (item.relatedCases !== undefined) out.relatedCases = JSON.stringify(item.relatedCases);
+  if (item.childCaseIds !== undefined) out.childCaseIds = item.childCaseIds ? JSON.stringify(item.childCaseIds) : null;
   if (item.descriptionHistory !== undefined) out.descriptionHistory = item.descriptionHistory ? JSON.stringify(item.descriptionHistory) : null;
   return out;
 }

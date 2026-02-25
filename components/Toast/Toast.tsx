@@ -2,38 +2,27 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
+import { Icon } from "@/components/ui/icon";
 
-export interface ToastProps {
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  duration?: number;
-  children: React.ReactNode;
+export interface ToastData {
+  id: string;
+  title: string;
+  description?: string;
+  variant?: "default" | "info" | "success" | "warning" | "error";
+  icon?: string;
+  duration: number;
+  action?: { label: string; onClick: () => void };
 }
 
 export interface ToastProviderProps {
   children: React.ReactNode;
 }
 
-export interface ToastViewportProps
-  extends React.HTMLAttributes<HTMLDivElement> {}
-
-export interface ToastActionProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  altText: string;
-}
-
-export interface ToastCloseProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {}
-
-export interface ToastTitleProps
-  extends React.HTMLAttributes<HTMLDivElement> {}
-
-export interface ToastDescriptionProps
-  extends React.HTMLAttributes<HTMLDivElement> {}
-
 const ToastContext = React.createContext<{
-  toasts: Array<{ id: string; message: string; duration: number }>;
-  addToast: (message: string, duration?: number) => void;
+  toasts: ToastData[];
+  addToast: (
+    toast: Omit<ToastData, "id" | "duration"> & { duration?: number }
+  ) => void;
   removeToast: (id: string) => void;
 }>({
   toasts: [],
@@ -42,21 +31,23 @@ const ToastContext = React.createContext<{
 });
 
 export const ToastProvider = ({ children }: ToastProviderProps) => {
-  const [toasts, setToasts] = React.useState<
-    Array<{ id: string; message: string; duration: number }>
-  >([]);
+  const [toasts, setToasts] = React.useState<ToastData[]>([]);
 
-  const addToast = React.useCallback((message: string, duration = 5000) => {
-    const id = Math.random().toString(36).substring(7);
-    setToasts((prev) => [...prev, { id, message, duration }]);
+  const addToast = React.useCallback(
+    (toast: Omit<ToastData, "id" | "duration"> & { duration?: number }) => {
+      const id = Math.random().toString(36).substring(7);
+      const duration = toast.duration ?? 6000;
+      setToasts((prev) => [...prev, { ...toast, id, duration }]);
 
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id));
-    }, duration);
-  }, []);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, duration);
+    },
+    []
+  );
 
   const removeToast = React.useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   return (
@@ -74,157 +65,104 @@ export const useToast = () => {
   return context;
 };
 
-const ToastViewport = React.forwardRef<
-  HTMLDivElement,
-  ToastViewportProps
->(({ className, ...props }, ref) => {
-  const { toasts } = React.useContext(ToastContext);
+const variantStyles: Record<
+  string,
+  { border: string; iconColor: string; bg: string }
+> = {
+  default: {
+    border: "border-border dark:border-gray-700",
+    iconColor: "text-muted-foreground",
+    bg: "bg-white dark:bg-gray-900",
+  },
+  info: {
+    border: "border-[#006180]/30 dark:border-[#80E0FF]/30",
+    iconColor: "text-[#006180] dark:text-[#80E0FF]",
+    bg: "bg-[#E6F7FF]/80 dark:bg-[#006180]/10",
+  },
+  success: {
+    border: "border-[#008000]/30 dark:border-green-500/30",
+    iconColor: "text-[#008000] dark:text-green-400",
+    bg: "bg-green-50/80 dark:bg-green-950/20",
+  },
+  warning: {
+    border: "border-[#C53B00]/30 dark:border-orange-500/30",
+    iconColor: "text-[#C53B00] dark:text-orange-400",
+    bg: "bg-orange-50/80 dark:bg-orange-950/20",
+  },
+  error: {
+    border: "border-[#C40000]/30 dark:border-red-500/30",
+    iconColor: "text-[#C40000] dark:text-red-400",
+    bg: "bg-red-50/80 dark:bg-red-950/20",
+  },
+};
+
+const defaultIcons: Record<string, string> = {
+  default: "info",
+  info: "info",
+  success: "check_circle",
+  warning: "warning",
+  error: "error",
+};
+
+function ToastCard({ toast }: { toast: ToastData }) {
+  const { removeToast } = React.useContext(ToastContext);
+  const variant = toast.variant ?? "default";
+  const styles = variantStyles[variant] ?? variantStyles.default;
+  const iconName = toast.icon ?? defaultIcons[variant] ?? "info";
 
   return (
     <div
-      ref={ref}
       className={cn(
-        "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
-        className
+        "group pointer-events-auto relative flex w-full items-start gap-3 overflow-hidden rounded-lg border p-3 pr-8 shadow-lg backdrop-blur-sm transition-all",
+        styles.border,
+        styles.bg
       )}
-      {...props}
     >
+      <div className={cn("mt-0.5 shrink-0", styles.iconColor)}>
+        <Icon name={iconName} size={18} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          {toast.title}
+        </p>
+        {toast.description && (
+          <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-400">
+            {toast.description}
+          </p>
+        )}
+        {toast.action && (
+          <button
+            type="button"
+            onClick={() => {
+              toast.action!.onClick();
+              removeToast(toast.id);
+            }}
+            className="mt-1.5 text-xs font-medium text-[#006180] underline hover:no-underline dark:text-[#80E0FF]"
+          >
+            {toast.action.label}
+          </button>
+        )}
+      </div>
+      <button
+        className="absolute right-2 top-2 rounded-md p-0.5 text-gray-400 opacity-0 transition-opacity hover:text-gray-700 focus:opacity-100 focus:outline-none group-hover:opacity-100 dark:text-gray-500 dark:hover:text-gray-300"
+        onClick={() => removeToast(toast.id)}
+      >
+        <Icon name="close" size={14} />
+      </button>
+    </div>
+  );
+}
+
+export function ToastViewport() {
+  const { toasts } = React.useContext(ToastContext);
+
+  if (toasts.length === 0) return null;
+
+  return (
+    <div className="fixed bottom-4 right-4 z-[200] flex w-full max-w-sm flex-col gap-2">
       {toasts.map((toast) => (
-        <Toast key={toast.id} id={toast.id} message={toast.message} />
+        <ToastCard key={toast.id} toast={toast} />
       ))}
     </div>
   );
-});
-ToastViewport.displayName = "ToastViewport";
-
-const Toast = ({
-  id,
-  message,
-}: {
-  id: string;
-  message: string;
-}) => {
-  const { removeToast } = React.useContext(ToastContext);
-
-  return (
-    <div
-      className={cn(
-        "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border border-border bg-white p-6 pr-8 shadow-lg transition-all"
-      )}
-    >
-      <div className="grid gap-1">
-        <div className="text-sm font-semibold text-gray-900">{message}</div>
-      </div>
-      <button
-        className={cn(
-          "absolute right-2 top-2 rounded-md p-1 text-gray-600 opacity-0 transition-opacity hover:text-gray-900 focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100"
-        )}
-        onClick={() => removeToast(id)}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-4 w-4"
-        >
-          <path d="M18 6 6 18" />
-          <path d="m6 6 12 12" />
-        </svg>
-      </button>
-    </div>
-  );
-};
-
-const ToastAction = React.forwardRef<
-  HTMLButtonElement,
-  ToastActionProps
->(({ className, altText, ...props }, ref) => {
-  return (
-    <button
-      ref={ref}
-      className={cn(
-        "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-border bg-transparent px-3 text-sm font-medium ring-offset-white transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#2C365D] focus:ring-offset-2",
-        className
-      )}
-      {...props}
-    >
-      {altText}
-    </button>
-  );
-});
-ToastAction.displayName = "ToastAction";
-
-const ToastClose = React.forwardRef<HTMLButtonElement, ToastCloseProps>(
-  ({ className, ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        className={cn(
-          "absolute right-2 top-2 rounded-md p-1 text-gray-600 opacity-0 transition-opacity hover:text-gray-900 focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100",
-          className
-        )}
-        {...props}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-4 w-4"
-        >
-          <path d="M18 6 6 18" />
-          <path d="m6 6 12 12" />
-        </svg>
-        <span className="sr-only">Close</span>
-      </button>
-    );
-  }
-);
-ToastClose.displayName = "ToastClose";
-
-const ToastTitle = React.forwardRef<HTMLDivElement, ToastTitleProps>(
-  ({ className, ...props }, ref) => {
-    return (
-      <div
-        ref={ref}
-        className={cn("text-sm font-semibold text-gray-900", className)}
-        {...props}
-      />
-    );
-  }
-);
-ToastTitle.displayName = "ToastTitle";
-
-const ToastDescription = React.forwardRef<
-  HTMLDivElement,
-  ToastDescriptionProps
->(({ className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn("text-sm opacity-90 text-gray-600", className)}
-      {...props}
-    />
-  );
-});
-ToastDescription.displayName = "ToastDescription";
-
-export {
-  ToastViewport,
-  ToastAction,
-  ToastClose,
-  ToastTitle,
-  ToastDescription,
-};
-
+}

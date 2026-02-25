@@ -32,6 +32,9 @@ model Case {
   activities       String?  // JSON array of Activity
   attachments      String?  // JSON array of Attachment
   relatedCases       String?  // JSON array of case numbers (string[])
+  parentCaseId       String?  // ID of the parent case (self-referential for child cases)
+  parentCaseNumber   String?  // Case number of the parent (display convenience)
+  childCaseIds       String?  // JSON array of child case IDs (string[])
   pendingReason      String?  // "Customer" | "3rd Party" | "On Hold" when status is Pending
   descriptionHistory String?  // JSON array of { description, updatedAt } for edit log
 

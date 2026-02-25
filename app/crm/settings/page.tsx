@@ -184,6 +184,11 @@ export default function SettingsPage() {
   const [slaToast, setSlaToast] = useState({ show: false, message: "" });
   const [slaRuleToDelete, setSlaRuleToDelete] = useState<number | null>(null);
 
+  const [coolOffDuration, setCoolOffDuration] = useState(48);
+  const [coolOffUnit, setCoolOffUnit] = useState("hours");
+  const [coolOffEnabled, setCoolOffEnabled] = useState(true);
+  const [coolOffBehaviour, setCoolOffBehaviour] = useState<"child" | "reopen">("child");
+
   const showSlaToast = (message: string) => {
     setSlaToast({ show: true, message });
     setTimeout(() => setSlaToast({ show: false, message: "" }), 3000);
@@ -742,11 +747,169 @@ export default function SettingsPage() {
               </Card>
             )}
 
+            {/* General Settings */}
+            {activeTab === "general" && (
+              <div className="flex flex-col gap-density-lg">
+                {/* Cool-off Period */}
+                <Card className="shadow-none">
+                  <SectionHeader
+                    title="Cool-Off Period"
+                    description="When a customer replies to a closed case, control whether to reopen it or create a new child case."
+                  />
+                  <CardContent className="p-density-lg">
+                    <div className="space-y-density-lg">
+                      <div
+                        className="flex cursor-pointer items-center justify-between rounded-density-md border border-border bg-gray-50 px-density-md py-density-sm dark:border-gray-700 dark:bg-gray-800"
+                        onClick={() => setCoolOffEnabled((v) => !v)}
+                      >
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                            Enable cool-off period
+                          </div>
+                          <div className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", marginTop: "var(--tally-spacing-xs)" }}>
+                            When enabled, replies to closed cases are evaluated against the cool-off window to decide behaviour
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <Switch
+                            checked={coolOffEnabled}
+                            onChange={(e) => setCoolOffEnabled((e.target as HTMLInputElement).checked)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      </div>
+
+                      {coolOffEnabled && (
+                        <>
+                          <div>
+                            <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                              Cool-off window
+                            </label>
+                            <div className="flex gap-density-sm">
+                              <Input
+                                type="number"
+                                min={1}
+                                value={coolOffDuration}
+                                onChange={(e) => setCoolOffDuration(parseInt(e.target.value, 10) || 1)}
+                                className="h-9 flex-1"
+                              />
+                              <Select
+                                value={coolOffUnit}
+                                onChange={(e) => setCoolOffUnit(e.target.value)}
+                                className="h-9 w-[160px] shrink-0"
+                              >
+                                <option value="hours">hours</option>
+                                <option value="business hours">business hours</option>
+                                <option value="calendar days">calendar days</option>
+                                <option value="business days">business days</option>
+                              </Select>
+                            </div>
+                            <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>
+                              Time after case closure before a reply triggers the outside-window behaviour.
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="mb-density-sm block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                              Behaviour when reply arrives
+                            </label>
+                            <div className="space-y-density-sm">
+                              <div
+                                className={cn(
+                                  "flex cursor-pointer items-start gap-density-md rounded-density-md border px-density-md py-density-sm transition-colors",
+                                  coolOffBehaviour === "reopen"
+                                    ? "border-[#006180] bg-[#006180]/5 dark:border-[#0091BF] dark:bg-[#0091BF]/10"
+                                    : "border-border bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+                                )}
+                                onClick={() => setCoolOffBehaviour("reopen")}
+                              >
+                                <div className="mt-0.5 shrink-0">
+                                  <div className={cn(
+                                    "flex h-4 w-4 items-center justify-center rounded-full border-2",
+                                    coolOffBehaviour === "reopen"
+                                      ? "border-[#006180] dark:border-[#80E0FF]"
+                                      : "border-gray-400 dark:border-gray-500"
+                                  )}>
+                                    {coolOffBehaviour === "reopen" && (
+                                      <div className="h-2 w-2 rounded-full bg-[#006180] dark:bg-[#80E0FF]" />
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                    Within cool-off window: Reopen parent case
+                                  </div>
+                                  <div className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", marginTop: "var(--tally-spacing-xs)" }}>
+                                    If the customer replies within {coolOffDuration} {coolOffUnit} of closure, the original case is reopened with a new SLA clock.
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div
+                                className={cn(
+                                  "flex cursor-pointer items-start gap-density-md rounded-density-md border px-density-md py-density-sm transition-colors",
+                                  coolOffBehaviour === "child"
+                                    ? "border-[#006180] bg-[#006180]/5 dark:border-[#0091BF] dark:bg-[#0091BF]/10"
+                                    : "border-border bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+                                )}
+                                onClick={() => setCoolOffBehaviour("child")}
+                              >
+                                <div className="mt-0.5 shrink-0">
+                                  <div className={cn(
+                                    "flex h-4 w-4 items-center justify-center rounded-full border-2",
+                                    coolOffBehaviour === "child"
+                                      ? "border-[#006180] dark:border-[#80E0FF]"
+                                      : "border-gray-400 dark:border-gray-500"
+                                  )}>
+                                    {coolOffBehaviour === "child" && (
+                                      <div className="h-2 w-2 rounded-full bg-[#006180] dark:bg-[#80E0FF]" />
+                                    )}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                    Outside cool-off window: Create child case
+                                  </div>
+                                  <div className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", marginTop: "var(--tally-spacing-xs)" }}>
+                                    If the reply arrives after {coolOffDuration} {coolOffUnit}, a new child case is auto-created and linked to the original. The parent case stays closed.
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-start gap-density-sm rounded-density-md border border-[#2C365D]/30 bg-[#2C365D]/5 px-density-md py-density-sm dark:border-[#7c8cb8]/30 dark:bg-[#7c8cb8]/10">
+                            <Icon name="info" size="var(--tally-icon-size-sm)" className="mt-0.5 shrink-0 text-[#2C365D] dark:text-[#7c8cb8]" />
+                            <p className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: "var(--tally-line-height-normal)" }}>
+                              Both options above apply in sequence. Replies within the window reopen the parent; replies outside it create a child case. Child cases get their own independent SLA tracking while the parent case metrics remain untouched.
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-none">
+                  <SectionHeader
+                    title="Other Settings"
+                    description="Additional CRM configuration options"
+                  />
+                  <CardContent className="p-density-xl">
+                    <p className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                      Additional general settings will be available in Phase 2.
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
             {/* Placeholder tabs */}
             {activeTab !== "users" &&
               activeTab !== "roles" &&
               activeTab !== "permissions" &&
-              activeTab !== "slaPolicies" && (
+              activeTab !== "slaPolicies" &&
+              activeTab !== "general" && (
                 <Card className="shadow-none">
                   <SectionHeader
                     title={SETTINGS_TABS.find((t) => t.key === activeTab)?.label ?? ""}

@@ -11,6 +11,7 @@ import NavigationBar from "@/components/NavigationBar/NavigationBar";
 import type { NavigationItem } from "@/components/NavigationBar/NavigationBar";
 import { type DensityMode, useDensityPreference } from "@/lib/density";
 import { cn } from "@/lib/utils";
+import { ToastProvider, ToastViewport, useToast } from "@/components/Toast/Toast";
 
 /* ─── Nav items ─────────────────────────────────────────────────────────── */
 
@@ -35,6 +36,47 @@ const bottomNavItems: NavigationItem[] = [
   { id: "help", label: "Help & Support", icon: "help_outline", href: "#" },
   { id: "settings", label: "Settings", icon: "settings", href: "/crm/settings" },
 ];
+
+/* ─── Demo toast triggers ──────────────────────────────────────────────── */
+
+function DemoToastButtons() {
+  const { addToast } = useToast();
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() =>
+          addToast({
+            title: "New unassigned case",
+            description: "BBMC-2026-001899 · Bowen Basin Mining Corp — Billing Enquiry",
+            variant: "warning",
+            icon: "inbox",
+            action: { label: "View case", onClick: () => window.location.assign("/crm/cases") },
+          })
+        }
+        className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+      >
+        Toast 1
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          addToast({
+            title: "Case assigned to you",
+            description: "GAS-2026-001875 · Gladstone Aluminium Smelter — EWR Meter Replacement",
+            variant: "info",
+            icon: "person",
+            action: { label: "View case", onClick: () => window.location.assign("/crm/cases") },
+          })
+        }
+        className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+      >
+        Toast 2
+      </button>
+    </>
+  );
+}
 
 /* ─── Layout ────────────────────────────────────────────────────────────── */
 
@@ -124,6 +166,7 @@ export default function CRMLayout({
                     : "cases";
 
   return (
+    <ToastProvider>
     <div className="flex h-screen min-w-0 flex-col overflow-hidden bg-[#F9F9FB] dark:bg-gray-900">
       {/* ── Brand strip ──────────────────────────────────────────────── */}
       <div className="h-1 shrink-0 bg-[#00C1FF]" />
@@ -170,7 +213,8 @@ export default function CRMLayout({
         </div>
 
         {/* Right side */}
-        <div className="ml-6 flex items-center gap-3">
+        <div className="ml-6 flex items-center gap-2">
+          <DemoToastButtons />
           <button
             type="button"
             className="relative flex h-8 w-8 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -314,6 +358,8 @@ export default function CRMLayout({
           <CaseLinksOverridesProvider>{children}</CaseLinksOverridesProvider>
         </main>
       </div>
+      <ToastViewport />
     </div>
+    </ToastProvider>
   );
 }
