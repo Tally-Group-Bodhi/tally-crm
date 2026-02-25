@@ -352,24 +352,15 @@ export default function OpportunityDetailPage({
         )}
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4 h-10 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-            <TabsTrigger
-              value="details"
-              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-            >
+        <Tabs value={activeTab} onValueChange={setActiveTab} variant="inline">
+          <TabsList className="mb-4">
+            <TabsTrigger value="details">
               Details
             </TabsTrigger>
-            <TabsTrigger
-              value="activity"
-              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-            >
+            <TabsTrigger value="activity">
               Activity ({MOCK_ACTIVITIES.length})
             </TabsTrigger>
-            <TabsTrigger
-              value="documents"
-              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-            >
+            <TabsTrigger value="documents">
               Documents ({MOCK_CONTRACTS.length})
             </TabsTrigger>
           </TabsList>

@@ -571,7 +571,7 @@ export default function CaseDetailContent({
       </div>
 
       {/* Tabbed Content */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} variant="inline">
         {/* Small viewport: dropdown */}
         <div className="mb-4 sm:hidden">
           <div className="relative">
@@ -597,31 +597,27 @@ export default function CaseDetailContent({
         </div>
 
         {/* Larger viewport: horizontal tabs */}
-        <TabsList className="mb-4 hidden h-10 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800 sm:inline-flex">
+        <TabsList className="mb-4 hidden sm:inline-flex">
           <TabsTrigger
             value="request"
-            className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
             style={{ fontSize: "var(--tally-font-size-sm)" }}
           >
             Request Information
           </TabsTrigger>
           <TabsTrigger
             value="communications"
-            className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
             style={{ fontSize: "var(--tally-font-size-sm)" }}
           >
             Communications ({caseItem.communications.length})
           </TabsTrigger>
           <TabsTrigger
             value="related"
-            className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
             style={{ fontSize: "var(--tally-font-size-sm)" }}
           >
             Related
           </TabsTrigger>
           <TabsTrigger
             value="history"
-            className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
             style={{ fontSize: "var(--tally-font-size-sm)" }}
           >
             History ({caseItem.activities.length})
@@ -841,10 +837,10 @@ export default function CaseDetailContent({
                     type="button"
                     onClick={() => setCommunicationsFilterTab(value)}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "inline-flex items-center gap-1 font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       active
-                        ? "border-gray-900 bg-gray-900 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900"
-                        : "border-border bg-white text-muted-foreground hover:bg-gray-50 hover:text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                        ? "rounded-full border border-gray-900 bg-gray-900 px-3 py-1.5 text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900"
+                        : "px-2 py-1.5 text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300"
                     )}
                     style={{ fontSize: "var(--tally-font-size-xs)" }}
                     aria-pressed={active}
@@ -854,9 +850,9 @@ export default function CaseDetailContent({
                     {count > 0 && (
                       <span
                         className={cn(
-                          "inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1 text-xs font-semibold leading-5",
+                          "inline-flex min-w-[1.25rem] items-center justify-center px-1 text-xs font-semibold leading-5",
                           active
-                            ? "bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900"
+                            ? "rounded-full bg-white/20 text-white dark:bg-gray-900/30 dark:text-gray-900"
                             : "text-muted-foreground"
                         )}
                       >
