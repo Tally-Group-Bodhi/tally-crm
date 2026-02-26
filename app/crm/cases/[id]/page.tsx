@@ -128,15 +128,17 @@ export default function CaseDetailPage() {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-      <AccountContextPanel
-        account={account}
-        linkedCaseNumbers={relatedCaseNumbersList}
-        currentCaseId={caseItem.id}
-        onOpenLinkModal={() => setLinkModalOpen(true)}
-        onOpenNotePanel={() => setNotePanelOpen(true)}
-        onOpenCallLogPanel={() => setCallLogPanelOpen(true)}
-        relatedCasesMap={useDb ? relatedCasesMap : undefined}
-      />
+      <div className="flex min-h-0 shrink-0 py-3 pl-3">
+        <AccountContextPanel
+          account={account}
+          linkedCaseNumbers={relatedCaseNumbersList}
+          currentCaseId={caseItem.id}
+          onOpenLinkModal={() => setLinkModalOpen(true)}
+          onOpenNotePanel={() => setNotePanelOpen(true)}
+          onOpenCallLogPanel={() => setCallLogPanelOpen(true)}
+          relatedCasesMap={useDb ? relatedCasesMap : undefined}
+        />
+      </div>
 
       <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto">
         <CaseDetailContent

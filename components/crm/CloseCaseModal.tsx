@@ -3,7 +3,6 @@
 import React from "react";
 import { Icon } from "@/components/ui/icon";
 import Button from "@/components/Button/Button";
-import Calendar from "@/components/Calendar/Calendar";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +11,6 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/Dialog/Dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/Popover/Popover";
 import type { Account, CaseItem } from "@/types/crm";
 
 const CLOSE_REASONS = [
@@ -45,115 +43,6 @@ function formatClosedAtDisplay(d: Date): string {
   });
 }
 
-function toTimeValue(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** Time picker cells matching Calendar UI: same size, radius, primary/accent. */
-const timeCellBase =
-  "inline-flex items-center justify-center rounded-[var(--cell-radius)] text-xs font-normal transition-none " +
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring " +
-  "text-foreground hover:bg-accent " +
-  "data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground " +
-  "size-[var(--cell-size)] p-0 select-none";
-
-function TimePicker({
-  value,
-  onChange,
-  className,
-}: {
-  value: Date;
-  onChange: (d: Date) => void;
-  className?: string;
-}) {
-  const hours24 = value.getHours();
-  const minutes = value.getMinutes();
-  const hour12 = hours24 % 12 || 12;
-  const isPM = hours24 >= 12;
-  const minuteStep = 5;
-  const minuteOptions = Array.from({ length: 60 / minuteStep }, (_, i) => i * minuteStep);
-  const roundedMinute = minuteOptions.reduce((prev, curr) =>
-    Math.abs(curr - minutes) < Math.abs(prev - minutes) ? curr : prev
-  );
-
-  const setHour12 = (h: number) => {
-    const h24 = isPM ? (h === 12 ? 12 : h + 12) : (h === 12 ? 0 : h);
-    const next = new Date(value);
-    next.setHours(h24, value.getMinutes(), 0, 0);
-    onChange(next);
-  };
-  const setMinute = (m: number) => {
-    const next = new Date(value);
-    next.setMinutes(m, 0, 0);
-    onChange(next);
-  };
-  const setAMPM = (pm: boolean) => {
-    const next = new Date(value);
-    const h = next.getHours();
-    if (pm && h < 12) next.setHours(h + 12, next.getMinutes(), 0, 0);
-    else if (!pm && h >= 12) next.setHours(h - 12, next.getMinutes(), 0, 0);
-    onChange(next);
-  };
-
-  return (
-    <div
-      className={className}
-      style={{ ["--cell-size" as string]: "2rem", ["--cell-radius" as string]: "0.375rem" }}
-    >
-      <div className="flex w-full items-start justify-between gap-6">
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="mb-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Hour</span>
-          <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[10rem] pr-0.5">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((h) => (
-              <button
-                key={h}
-                type="button"
-                data-selected={hour12 === h}
-                className={timeCellBase}
-                onClick={() => setHour12(h)}
-              >
-                {String(h).padStart(2, "0")}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="mb-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">Min</span>
-          <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[10rem] pr-0.5">
-            {minuteOptions.map((m) => (
-              <button
-                key={m}
-                type="button"
-                data-selected={roundedMinute === m}
-                className={timeCellBase}
-                onClick={() => setMinute(m)}
-              >
-                {String(m).padStart(2, "0")}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="mb-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground">AM/PM</span>
-          <div className="flex flex-col gap-1.5">
-            {(["am", "pm"] as const).map((ampm) => (
-              <button
-                key={ampm}
-                type="button"
-                data-selected={(ampm === "pm") === isPM}
-                className={timeCellBase}
-                onClick={() => setAMPM(ampm === "pm")}
-              >
-                {ampm}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface CloseCaseModalProps {
   open: boolean;
@@ -179,12 +68,6 @@ export default function CloseCaseModal({
   onCloseCase,
 }: CloseCaseModalProps) {
   const defaultClosedBy = currentUserName ?? caseItem.owner;
-  const closedByOptions = React.useMemo(() => {
-    const names = new Set<string>([defaultClosedBy, caseItem.owner, caseItem.team]);
-    names.add(account.primaryContact.name);
-    account.contacts.forEach((c) => names.add(c.name));
-    return Array.from(names).filter(Boolean).sort((a, b) => (a === defaultClosedBy ? -1 : b === defaultClosedBy ? 1 : a.localeCompare(b)));
-  }, [defaultClosedBy, caseItem.owner, caseItem.team, account.primaryContact.name, account.contacts]);
 
   const [closeReason, setCloseReason] = React.useState("");
   const [resolutionType, setResolutionType] = React.useState("");
@@ -203,15 +86,6 @@ export default function CloseCaseModal({
   }, [open, defaultClosedBy]);
 
   const canClose = closeReason.trim() !== "" && resolutionType.trim() !== "";
-
-  const handleClosedAtDateSelect = (date: Date | undefined) => {
-    if (!date) return;
-    setClosedAt((prev) => {
-      const next = new Date(date);
-      next.setHours(prev.getHours(), prev.getMinutes(), 0, 0);
-      return next;
-    });
-  };
 
   const handleCloseCase = () => {
     if (!canClose) return;
@@ -345,61 +219,25 @@ export default function CloseCaseModal({
             </select>
           </div>
 
-          {/* Closed at — Tally Calendar + Time */}
+          {/* Closed at — read-only */}
           <div className="space-y-1.5">
             <span className="block font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
               Closed at
             </span>
-            <Popover>
-              <PopoverTrigger
-                type="button"
-                className="flex w-full items-center gap-2 rounded-md border border-border bg-white px-3 py-2 text-left text-sm outline-none transition-colors focus:border-[#006180] focus:ring-1 focus:ring-[#006180] hover:bg-gray-50/50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800/50"
-              >
-                <Icon name="calendar_today" size={18} className="shrink-0 text-muted-foreground" />
-                <span className="flex-1">{formatClosedAtDisplay(closedAt)}</span>
-                <Icon name="expand_more" size={18} className="shrink-0 text-muted-foreground" />
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={closedAt}
-                  onSelect={handleClosedAtDateSelect}
-                  showOutsideDays
-                  captionLayout="dropdown"
-                  fromYear={new Date().getFullYear() - 2}
-                  toYear={new Date().getFullYear() + 2}
-                />
-                <div className="border-t border-border px-3 py-3 dark:border-gray-700">
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                    Time
-                  </label>
-                  <TimePicker
-                    value={closedAt}
-                    onChange={setClosedAt}
-                    className="mt-1"
-                  />
-                </div>
-              </PopoverContent>
-            </Popover>
+            <div className="flex items-center gap-2 rounded-md border border-border bg-gray-50 px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+              <Icon name="calendar_today" size={18} className="shrink-0 text-muted-foreground" />
+              <span>{formatClosedAtDisplay(closedAt)}</span>
+            </div>
           </div>
 
-          {/* Closed By */}
+          {/* Closed By — read-only */}
           <div className="space-y-1.5">
-            <label htmlFor="closed-by" className="block font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+            <span className="block font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
               Closed by
-            </label>
-            <select
-              id="closed-by"
-              value={closedBy}
-              onChange={(e) => setClosedBy(e.target.value)}
-              className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus:border-[#006180] focus:ring-1 focus:ring-[#006180] dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-            >
-              {closedByOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            </span>
+            <div className="rounded-md border border-border bg-gray-50 px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100">
+              {closedBy}
+            </div>
           </div>
         </div>
 

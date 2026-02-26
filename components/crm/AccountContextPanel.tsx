@@ -114,10 +114,11 @@ export default function AccountContextPanel({
   className,
 }: AccountContextPanelProps) {
   const [accountDetailsOpen, setAccountDetailsOpen] = React.useState(true);
-  const [accountBalanceOpen, setAccountBalanceOpen] = React.useState(true);
+  const [accountBalanceOpen, setAccountBalanceOpen] = React.useState(false);
   const [primaryContactOpen, setPrimaryContactOpen] = React.useState(true);
-  const [linkedCasesOpen, setLinkedCasesOpen] = React.useState(true);
-  const [supplyDetailsOpen, setSupplyDetailsOpen] = React.useState(true);
+  const [contactDetailsExpanded, setContactDetailsExpanded] = React.useState(false);
+  const [linkedCasesOpen, setLinkedCasesOpen] = React.useState(false);
+  const [supplyDetailsOpen, setSupplyDetailsOpen] = React.useState(false);
   const resolveCase = (caseNum: string) => relatedCasesMap?.get(caseNum) ?? getCaseByCaseNumber(caseNum);
   const accountTypeVariant =
     account.type === "Industrial"
@@ -141,7 +142,7 @@ export default function AccountContextPanel({
   return (
     <aside
       className={cn(
-        "flex min-h-0 w-52 min-w-0 shrink-0 flex-col border-r border-border bg-white dark:border-gray-800 dark:bg-gray-950 sm:w-64 md:w-72",
+        "flex min-h-0 w-52 min-w-0 shrink-0 flex-col rounded-xl border border-border bg-white dark:border-gray-800 dark:bg-gray-950 sm:w-64 md:w-72",
         className
       )}
     >
@@ -306,6 +307,79 @@ export default function AccountContextPanel({
 
             <div className={sectionDividerClass} />
 
+            {/* Primary Contact */}
+            <Collapsible
+              open={primaryContactOpen}
+              onOpenChange={setPrimaryContactOpen}
+              className="flex flex-col"
+            >
+              <CollapsibleTrigger className={sectionTriggerClass} style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                <span className="flex items-center gap-2">
+                  <Icon name="person" size={16} className="shrink-0 text-muted-foreground" />
+                  <span>Primary Contact</span>
+                </span>
+                <span className={sectionTriggerChevronClass}>
+                  <Icon
+                    name="expand_more"
+                    size={16}
+                    className={cn("transition-transform", primaryContactOpen && "rotate-180")}
+                  />
+                </span>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <button
+                  type="button"
+                  onClick={() => setContactDetailsExpanded((v) => !v)}
+                  className="w-full cursor-pointer rounded-density-md border border-border bg-gray-50 p-density-sm text-left transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p
+                        className="font-medium text-gray-900 dark:text-gray-100"
+                        style={{ fontSize: "var(--tally-font-size-xs)" }}
+                      >
+                        {account.primaryContact.name}
+                      </p>
+                      <p
+                        className="text-muted-foreground"
+                        style={{ fontSize: "var(--tally-font-size-xs)" }}
+                      >
+                        {account.primaryContact.role}
+                      </p>
+                    </div>
+                    <Icon
+                      name="expand_more"
+                      size={14}
+                      className={cn(
+                        "shrink-0 text-muted-foreground transition-transform",
+                        contactDetailsExpanded && "rotate-180"
+                      )}
+                    />
+                  </div>
+                  {contactDetailsExpanded && (
+                    <div className="mt-1.5 space-y-0.5">
+                      <div
+                        className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"
+                        style={{ fontSize: "var(--tally-font-size-xs)" }}
+                      >
+                        <Icon name="mail" size={12} className="shrink-0" />
+                        <span className="truncate">{account.primaryContact.email}</span>
+                      </div>
+                      <div
+                        className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"
+                        style={{ fontSize: "var(--tally-font-size-xs)" }}
+                      >
+                        <Icon name="phone" size={12} className="shrink-0" />
+                        {account.primaryContact.phone}
+                      </div>
+                    </div>
+                  )}
+                </button>
+              </CollapsibleContent>
+            </Collapsible>
+
+            <div className={sectionDividerClass} />
+
             {/* Supply details */}
             <Collapsible
               open={supplyDetailsOpen}
@@ -405,61 +479,6 @@ export default function AccountContextPanel({
                   label="Contract end"
                   value={account.contractEndDate}
                 />
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-
-          <div className={sectionDividerClass} />
-
-          {/* Primary Contact */}
-          <Collapsible
-            open={primaryContactOpen}
-            onOpenChange={setPrimaryContactOpen}
-            className="flex flex-col"
-          >
-            <CollapsibleTrigger className={sectionTriggerClass} style={{ fontSize: "var(--tally-font-size-xs)" }}>
-              <span className="flex items-center gap-2">
-                <Icon name="person" size={16} className="shrink-0 text-muted-foreground" />
-                <span>Primary Contact</span>
-              </span>
-              <span className={sectionTriggerChevronClass}>
-                <Icon
-                  name="expand_more"
-                  size={16}
-                  className={cn("transition-transform", primaryContactOpen && "rotate-180")}
-                />
-              </span>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="rounded-density-md border border-border bg-gray-50 p-density-sm pt-density-sm dark:border-gray-700 dark:bg-gray-900">
-                <p
-                  className="font-medium text-gray-900 dark:text-gray-100"
-                  style={{ fontSize: "var(--tally-font-size-xs)" }}
-                >
-                  {account.primaryContact.name}
-                </p>
-                <p
-                  className="text-muted-foreground"
-                  style={{ fontSize: "var(--tally-font-size-xs)" }}
-                >
-                  {account.primaryContact.role}
-                </p>
-                <div className="mt-1.5 space-y-0.5">
-                  <div
-                    className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"
-                    style={{ fontSize: "var(--tally-font-size-xs)" }}
-                  >
-                    <Icon name="mail" size={12} className="shrink-0" />
-                    <span className="truncate">{account.primaryContact.email}</span>
-                  </div>
-                  <div
-                    className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"
-                    style={{ fontSize: "var(--tally-font-size-xs)" }}
-                  >
-                    <Icon name="phone" size={12} className="shrink-0" />
-                    {account.primaryContact.phone}
-                  </div>
-                </div>
               </div>
             </CollapsibleContent>
           </Collapsible>

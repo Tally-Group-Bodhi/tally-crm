@@ -391,7 +391,7 @@ export default function CaseDetailContent({
       )}
 
       {/* Header */}
-      <div className="mb-density-xl">
+      <div className="mb-density-sm">
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
@@ -930,22 +930,18 @@ export default function CaseDetailContent({
               {filteredCommunications.length > 0 && (
                 <button
                   type="button"
+                  title={communicationsExpandedIds.size >= filteredCommunications.length && filteredCommunications.length > 0 ? "Collapse All" : "Expand All"}
                   onClick={() => {
                     const allIds = new Set(filteredCommunications.map((c) => c.id));
                     const allExpanded = allIds.size > 0 && communicationsExpandedIds.size >= allIds.size;
                     setCommunicationsExpandedIds(allExpanded ? new Set() : allIds);
                   }}
-                  className="inline-flex items-center gap-1.5 bg-transparent px-0 py-1 text-sm font-medium text-[#2C365D] transition-colors hover:underline dark:text-[#7c8cb8]"
-                  style={{ fontSize: "var(--tally-font-size-sm)" }}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#2C365D] transition-colors hover:bg-gray-100 dark:text-[#7c8cb8] dark:hover:bg-gray-800"
                 >
                   <Icon
                     name={communicationsExpandedIds.size >= filteredCommunications.length ? "unfold_less" : "unfold_more"}
-                    size={16}
-                    className="shrink-0"
+                    size={18}
                   />
-                  {communicationsExpandedIds.size >= filteredCommunications.length && filteredCommunications.length > 0
-                    ? "Collapse All"
-                    : "Expand All"}
                 </button>
               )}
             </div>
@@ -1834,6 +1830,7 @@ export default function CaseDetailContent({
         onOpenChange={setCloseCaseModalOpen}
         caseItem={caseItem}
         account={account}
+        currentUserName={CURRENT_USER}
         onCloseCase={(payload) => {
           if (onUpdateCase) {
             setUpdating(true);
