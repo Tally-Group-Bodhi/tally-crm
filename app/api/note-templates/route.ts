@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma, useDatabase } from "@/lib/db";
-
-const dbUnavailable = () =>
-  NextResponse.json(
-    { error: "Database not configured; use mock data." },
-    { status: 503 }
-  );
+import { MOCK_NOTE_TEMPLATES } from "@/lib/mock-note-templates";
 
 /** GET /api/note-templates — list all templates (optionally filter by active) */
 export async function GET(request: Request) {
-  if (!useDatabase() || !prisma) return dbUnavailable();
+  const { searchParams } = new URL(request.url);
+  const activeOnly = searchParams.get("active") === "true";
+
+  if (!useDatabase() || !prisma) {
+    const list = activeOnly
+      ? MOCK_NOTE_TEMPLATES.filter((t) => t.active)
+      : MOCK_NOTE_TEMPLATES;
+    return NextResponse.json(list);
+  }
 
   try {
-    const { searchParams } = new URL(request.url);
-    const activeOnly = searchParams.get("active") === "true";
-
     const templates = await prisma.noteTemplate.findMany({
       where: activeOnly ? { active: true } : undefined,
       orderBy: { createdAt: "desc" },
@@ -28,7 +28,12 @@ export async function GET(request: Request) {
 
 /** POST /api/note-templates — create a new template */
 export async function POST(request: Request) {
-  if (!useDatabase() || !prisma) return dbUnavailable();
+  if (!useDatabase() || !prisma) {
+    return NextResponse.json(
+      { error: "Database not configured" },
+      { status: 503 }
+    );
+  }
 
   try {
     const body = await request.json();

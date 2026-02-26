@@ -1,20 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma, useDatabase } from "@/lib/db";
+import { MOCK_NOTE_TEMPLATES } from "@/lib/mock-note-templates";
 
-const dbUnavailable = () =>
-  NextResponse.json(
-    { error: "Database not configured; use mock data." },
-    { status: 503 }
-  );
+const noDb = () =>
+  NextResponse.json({ error: "Database not configured" }, { status: 503 });
 
 /** PATCH /api/note-templates/[id] — update a template */
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!useDatabase() || !prisma) return dbUnavailable();
-
   const id = (await params).id;
+
+  if (!useDatabase() || !prisma) {
+    const mock = MOCK_NOTE_TEMPLATES.find((t) => t.id === id);
+    if (!mock) return NextResponse.json(null, { status: 404 });
+    const body = await request.json();
+    return NextResponse.json({ ...mock, ...body });
+  }
+
   try {
     const body = await request.json();
     const data: Record<string, unknown> = {};
@@ -22,6 +26,8 @@ export async function PATCH(
     if (typeof body.title === "string") data.title = body.title.trim();
     if (typeof body.body === "string") data.body = body.body;
     if (typeof body.active === "boolean") data.active = body.active;
+    if (typeof body.category === "string") data.category = body.category;
+    if (typeof body.description === "string") data.description = body.description;
 
     if (Object.keys(data).length === 0) {
       const row = await prisma.noteTemplate.findUnique({ where: { id } });
@@ -45,7 +51,9 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!useDatabase() || !prisma) return dbUnavailable();
+  if (!useDatabase() || !prisma) {
+    return NextResponse.json({ ok: true });
+  }
 
   const id = (await params).id;
   try {
