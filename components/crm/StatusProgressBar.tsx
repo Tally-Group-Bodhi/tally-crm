@@ -16,7 +16,6 @@ const STATUS_STEPS: { status: CaseStatus; icon: string }[] = [
   { status: "New", icon: "add_circle" },
   { status: "In Progress", icon: "pending" },
   { status: "Pending", icon: "hourglass_top" },
-  { status: "Resolved", icon: "task_alt" },
   { status: "Closed", icon: "check_circle" },
 ];
 

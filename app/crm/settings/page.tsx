@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -49,6 +49,7 @@ const SETTINGS_TABS = [
   { key: "slaPolicies", label: "SLA Policies", icon: "timer" },
   { key: "businessHours", label: "Business Hours", icon: "work_history" },
   { key: "templates", label: "Email Templates", icon: "drafts" },
+  { key: "noteTemplates", label: "Note Templates", icon: "sticky_note_2" },
   { key: "inboxes", label: "Inboxes", icon: "inbox" },
   { key: "audit", label: "Audit Log", icon: "history" },
   { key: "general", label: "General", icon: "tune" },
@@ -103,6 +104,29 @@ const CASE_TYPES = ["Complaint", "General Enquiry", "EWR", "Life Support", "Serv
 const CONTACT_REASONS = ["All contact reasons", "Billing dispute", "Meter fault", "New connection", "Supply interruption", "Contract query"];
 const DURATION_UNITS = ["business days", "calendar days", "business hours"];
 const ESCALATE_OPTIONS = ["No escalation", "Team Leader", "Manager", "Compliance Officer"];
+
+interface NoteTemplateItem {
+  id: string;
+  name: string;
+  title: string;
+  body: string;
+  category: string;
+  description: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const NOTE_TEMPLATE_CATEGORIES = ["Closing", "Field", "Internal", "Billing", "Escalation", "Onboarding", "Technical"];
+
+const defaultNoteTemplateForm = {
+  name: "",
+  title: "",
+  body: "",
+  category: "",
+  description: "",
+  active: true,
+};
 
 function RoleBadge({ role, label }: { role: string; label?: string }) {
   const config: Record<string, "default" | "info" | "warning"> = {
@@ -188,6 +212,145 @@ export default function SettingsPage() {
   const [coolOffUnit, setCoolOffUnit] = useState("hours");
   const [coolOffEnabled, setCoolOffEnabled] = useState(true);
   const [coolOffBehaviour, setCoolOffBehaviour] = useState<"child" | "reopen">("child");
+
+  // Note Templates state
+  const [noteTemplates, setNoteTemplates] = useState<NoteTemplateItem[]>([]);
+  const [noteTemplatesLoading, setNoteTemplatesLoading] = useState(false);
+  const [noteTemplateSearch, setNoteTemplateSearch] = useState("");
+  const [noteTemplateFilterTab, setNoteTemplateFilterTab] = useState<"all" | "active" | "inactive">("all");
+  const [noteTemplateSheetOpen, setNoteTemplateSheetOpen] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [noteTemplateForm, setNoteTemplateForm] = useState(defaultNoteTemplateForm);
+  const [noteTemplateToast, setNoteTemplateToast] = useState({ show: false, message: "" });
+  const [noteTemplateToDelete, setNoteTemplateToDelete] = useState<string | null>(null);
+  const [noteTemplateSaving, setNoteTemplateSaving] = useState(false);
+
+  const showNoteTemplateToast = useCallback((message: string) => {
+    setNoteTemplateToast({ show: true, message });
+    setTimeout(() => setNoteTemplateToast({ show: false, message: "" }), 3000);
+  }, []);
+
+  const fetchNoteTemplates = useCallback(async () => {
+    setNoteTemplatesLoading(true);
+    try {
+      const res = await fetch("/api/note-templates");
+      if (res.ok) {
+        const data = await res.json();
+        setNoteTemplates(data);
+      }
+    } catch {
+      /* silently fail for now */
+    } finally {
+      setNoteTemplatesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "noteTemplates" && noteTemplates.length === 0) {
+      fetchNoteTemplates();
+    }
+  }, [activeTab, noteTemplates.length, fetchNoteTemplates]);
+
+  const filteredNoteTemplates = useMemo(() => {
+    let list = [...noteTemplates];
+    if (noteTemplateFilterTab === "active") list = list.filter((t) => t.active);
+    else if (noteTemplateFilterTab === "inactive") list = list.filter((t) => !t.active);
+    if (noteTemplateSearch) {
+      const s = noteTemplateSearch.toLowerCase();
+      list = list.filter((t) => t.name.toLowerCase().includes(s) || t.title.toLowerCase().includes(s));
+    }
+    return list;
+  }, [noteTemplates, noteTemplateFilterTab, noteTemplateSearch]);
+
+  const noteTemplateCounts = useMemo(() => ({
+    all: noteTemplates.length,
+    active: noteTemplates.filter((t) => t.active).length,
+    inactive: noteTemplates.filter((t) => !t.active).length,
+  }), [noteTemplates]);
+
+  const openNoteTemplatePanel = (mode: "new" | "edit", id?: string) => {
+    if (mode === "edit" && id) {
+      const tpl = noteTemplates.find((t) => t.id === id);
+      if (tpl) {
+        setEditingTemplateId(id);
+        setNoteTemplateForm({
+          name: tpl.name,
+          title: tpl.title,
+          body: tpl.body,
+          category: tpl.category,
+          description: tpl.description,
+          active: tpl.active,
+        });
+      }
+    } else {
+      setEditingTemplateId(null);
+      setNoteTemplateForm(defaultNoteTemplateForm);
+    }
+    setNoteTemplateSheetOpen(true);
+  };
+
+  const closeNoteTemplatePanel = () => {
+    setNoteTemplateSheetOpen(false);
+    setEditingTemplateId(null);
+  };
+
+  const saveNoteTemplate = async () => {
+    if (!noteTemplateForm.name.trim()) return;
+    setNoteTemplateSaving(true);
+    try {
+      if (editingTemplateId) {
+        const res = await fetch(`/api/note-templates/${editingTemplateId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(noteTemplateForm),
+        });
+        if (res.ok) {
+          await fetchNoteTemplates();
+          showNoteTemplateToast("Template updated");
+        }
+      } else {
+        const res = await fetch("/api/note-templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(noteTemplateForm),
+        });
+        if (res.ok) {
+          await fetchNoteTemplates();
+          showNoteTemplateToast("Template created");
+        }
+      }
+      closeNoteTemplatePanel();
+    } finally {
+      setNoteTemplateSaving(false);
+    }
+  };
+
+  const duplicateNoteTemplate = async (id: string) => {
+    const tpl = noteTemplates.find((t) => t.id === id);
+    if (!tpl) return;
+    const res = await fetch("/api/note-templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: `${tpl.name} (copy)`,
+        title: tpl.title,
+        body: tpl.body,
+        active: false,
+      }),
+    });
+    if (res.ok) {
+      await fetchNoteTemplates();
+      showNoteTemplateToast("Template duplicated — edit to customise");
+    }
+  };
+
+  const deleteNoteTemplate = async (id: string) => {
+    const res = await fetch(`/api/note-templates/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      await fetchNoteTemplates();
+      showNoteTemplateToast("Template deleted");
+    }
+  };
 
   const showSlaToast = (message: string) => {
     setSlaToast({ show: true, message });
@@ -747,6 +910,141 @@ export default function SettingsPage() {
               </Card>
             )}
 
+            {/* Note Templates */}
+            {activeTab === "noteTemplates" && (
+              <Card className="shadow-none">
+                <SectionHeader
+                  title="Note Templates"
+                  description="Create reusable templates to prefill notes when adding them to a case."
+                  action={
+                    <Button size="sm" className="gap-1.5" onClick={() => openNoteTemplatePanel("new")}>
+                      <Icon name="add" size="var(--tally-icon-size-sm)" />
+                      New Template
+                    </Button>
+                  }
+                />
+                <div className="px-density-lg pb-density-lg">
+                  <div className="mb-density-md mt-density-lg flex border-b border-border dark:border-gray-700">
+                    {([
+                      { key: "all" as const, label: "All", count: noteTemplateCounts.all },
+                      { key: "active" as const, label: "Active", count: noteTemplateCounts.active },
+                      { key: "inactive" as const, label: "Inactive", count: noteTemplateCounts.inactive },
+                    ]).map(({ key, label, count }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setNoteTemplateFilterTab(key)}
+                        className={cn(
+                          "flex items-center gap-density-sm border-b-2 px-density-md py-density-sm font-medium transition-colors",
+                          noteTemplateFilterTab === key
+                            ? "border-[#2C365D] text-[#2C365D] dark:border-[#7c8cb8] dark:text-[#7c8cb8]"
+                            : "border-transparent text-muted-foreground hover:text-gray-900 dark:hover:text-gray-100"
+                        )}
+                        style={{ fontSize: "var(--tally-font-size-sm)" }}
+                      >
+                        {label}
+                        <span
+                          className={cn(
+                            "inline-flex min-w-[18px] items-center justify-center rounded-full px-density-sm font-semibold",
+                            noteTemplateFilterTab === key ? "bg-[#2C365D]/10 text-[#2C365D] dark:bg-[#7c8cb8]/10 dark:text-[#7c8cb8]" : "bg-gray-200 text-muted-foreground dark:bg-gray-700 dark:text-gray-400"
+                          )}
+                          style={{ height: "var(--tally-spacing-lg)", fontSize: "var(--tally-font-size-xs)" }}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mb-density-md flex flex-wrap items-center gap-density-md">
+                    <div className="relative max-w-[320px] flex-1">
+                      <Icon name="search" size="var(--tally-icon-size-sm)" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search templates..."
+                        value={noteTemplateSearch}
+                        onChange={(e) => setNoteTemplateSearch(e.target.value)}
+                        className="h-9 w-full rounded-density-md border border-border bg-white pl-9 pr-density-sm outline-none placeholder:text-muted-foreground focus:border-[#2C365D] focus:ring-1 focus:ring-[#2C365D] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                        style={{ fontSize: "var(--tally-font-size-sm)", paddingTop: "var(--tally-spacing-sm)", paddingBottom: "var(--tally-spacing-sm)" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded-density-md border border-border dark:border-gray-700">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Template name</TableHead>
+                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Category</TableHead>
+                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Default title</TableHead>
+                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
+                          <TableHead className="w-10 bg-gray-50 dark:bg-gray-800/50" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {noteTemplatesLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-density-xl text-center text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                              Loading…
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredNoteTemplates.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-density-xl text-center text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                              {noteTemplates.length === 0 ? "No templates yet. Create one to get started." : "No templates match your filters."}
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredNoteTemplates.map((tpl) => (
+                            <TableRow key={tpl.id} className="group">
+                              <TableCell>
+                                <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                  {tpl.name}
+                                </div>
+                                {tpl.description && (
+                                  <div className="line-clamp-1 text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                    {tpl.description.slice(0, 80)}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {tpl.category ? (
+                                  <Badge variant="outline" className="text-muted-foreground">{tpl.category}</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                {tpl.title || "—"}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={tpl.active ? "success" : "outline"} className={!tpl.active ? "text-muted-foreground" : undefined}>
+                                  {tpl.active ? "● Active" : "○ Inactive"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-density-xs opacity-0 transition-opacity group-hover:opacity-100">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openNoteTemplatePanel("edit", tpl.id)} title="Edit">
+                                    <Icon name="edit" size="var(--tally-icon-size-sm)" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicateNoteTemplate(tpl.id)} title="Duplicate">
+                                    <Icon name="content_copy" size="var(--tally-icon-size-sm)" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-[#C40000]/10 hover:text-[#C40000]" onClick={() => setNoteTemplateToDelete(tpl.id)} title="Delete">
+                                    <Icon name="delete" size="var(--tally-icon-size-sm)" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* General Settings */}
             {activeTab === "general" && (
               <div className="flex flex-col gap-density-lg">
@@ -909,6 +1207,7 @@ export default function SettingsPage() {
               activeTab !== "roles" &&
               activeTab !== "permissions" &&
               activeTab !== "slaPolicies" &&
+              activeTab !== "noteTemplates" &&
               activeTab !== "general" && (
                 <Card className="shadow-none">
                   <SectionHeader
@@ -1186,6 +1485,160 @@ export default function SettingsPage() {
         >
           <Icon name="check" size="var(--tally-icon-size-md)" className="shrink-0 text-green-600 dark:text-green-400" />
           <span>{slaToast.message}</span>
+        </div>
+      )}
+
+      {/* Confirm delete note template */}
+      <AlertDialog open={noteTemplateToDelete !== null} onOpenChange={(open) => !open && setNoteTemplateToDelete(null)}>
+        <AlertDialogContent className="dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-gray-100">Delete template</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
+              Are you sure you want to delete &quot;{noteTemplateToDelete != null ? noteTemplates.find((t) => t.id === noteTemplateToDelete)?.name : ""}&quot;? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="hover:bg-[#C40000]/90 bg-[#C40000] text-white focus-visible:ring-[#C40000] dark:hover:bg-[#C40000]/80"
+              onClick={() => {
+                if (noteTemplateToDelete != null) {
+                  deleteNoteTemplate(noteTemplateToDelete);
+                  setNoteTemplateToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Note Template slide-over panel */}
+      <Sheet open={noteTemplateSheetOpen} onOpenChange={setNoteTemplateSheetOpen}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-white p-0 dark:border-gray-700 dark:bg-gray-900 sm:!max-w-[600px]"
+          style={{ maxWidth: "min(600px, 100vw)" }}
+        >
+          <SheetHeader className="flex flex-row items-start justify-between gap-density-md border-b border-border px-density-lg py-density-md dark:border-gray-700">
+            <div>
+              <SheetTitle className="font-semibold text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}>
+                {editingTemplateId ? "Edit Template" : "New Template"}
+              </SheetTitle>
+              <SheetDescription className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: "var(--tally-line-height-normal)" }}>
+                {editingTemplateId ? noteTemplates.find((t) => t.id === editingTemplateId)?.name : "Create a reusable note template"}
+              </SheetDescription>
+            </div>
+            <SheetClose className="relative right-0 top-0 rounded-density-md p-density-sm hover:bg-gray-100 dark:hover:bg-gray-800" />
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto px-density-lg py-density-lg">
+            <div className="mb-density-xl">
+              <div className="border-b border-border pb-density-xs font-semibold uppercase tracking-wider text-muted-foreground dark:border-gray-700" style={{ fontSize: "var(--tally-font-size-xs)", letterSpacing: "0.08em", marginBottom: "var(--tally-spacing-md)" }}>Template Details</div>
+              <div className="space-y-density-md">
+                <div>
+                  <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Template name <span className="text-[#C40000]">*</span></label>
+                  <Input
+                    value={noteTemplateForm.name}
+                    onChange={(e) => setNoteTemplateForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Escalation Follow-up"
+                    className="h-9"
+                  />
+                  <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Internal name shown in the template picker when adding a note.</p>
+                </div>
+                <div>
+                  <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Default title</label>
+                  <Input
+                    value={noteTemplateForm.title}
+                    onChange={(e) => setNoteTemplateForm((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. Follow-up Required"
+                    className="h-9"
+                  />
+                  <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Pre-fills the note title field. Users can edit it before saving.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-density-md">
+                  <div>
+                    <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Category</label>
+                    <Select
+                      value={noteTemplateForm.category}
+                      onChange={(e) => setNoteTemplateForm((f) => ({ ...f, category: e.target.value }))}
+                      className="h-9"
+                    >
+                      <option value="">None</option>
+                      {NOTE_TEMPLATE_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Description</label>
+                    <Input
+                      value={noteTemplateForm.description}
+                      onChange={(e) => setNoteTemplateForm((f) => ({ ...f, description: e.target.value }))}
+                      placeholder="Brief description of when to use this template"
+                      className="h-9"
+                    />
+                    <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Shown in the template picker to help users choose the right one.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-density-xl">
+              <div className="border-b border-border pb-density-xs font-semibold uppercase tracking-wider text-muted-foreground dark:border-gray-700" style={{ fontSize: "var(--tally-font-size-xs)", letterSpacing: "0.08em", marginBottom: "var(--tally-spacing-md)" }}>Content</div>
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Note body</label>
+                <textarea
+                  value={noteTemplateForm.body}
+                  onChange={(e) => setNoteTemplateForm((f) => ({ ...f, body: e.target.value }))}
+                  placeholder="Enter the template content…"
+                  rows={8}
+                  className="w-full rounded-density-md border border-border bg-white px-density-md py-density-sm text-gray-900 outline-none placeholder:text-muted-foreground focus:border-[#2C365D] focus:ring-1 focus:ring-[#2C365D] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  style={{ fontSize: "var(--tally-font-size-sm)", lineHeight: "var(--tally-line-height-normal)", resize: "vertical" }}
+                />
+                <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Pre-fills the note body. Users can edit the content before saving.</p>
+              </div>
+            </div>
+
+            <div>
+              <div className="border-b border-border pb-density-xs font-semibold uppercase tracking-wider text-muted-foreground dark:border-gray-700" style={{ fontSize: "var(--tally-font-size-xs)", letterSpacing: "0.08em", marginBottom: "var(--tally-spacing-md)" }}>Status</div>
+              <div
+                className="flex cursor-pointer items-center justify-between rounded-density-md border border-border bg-gray-50 px-density-md py-density-sm dark:border-gray-700 dark:bg-gray-800"
+                onClick={() => setNoteTemplateForm((f) => ({ ...f, active: !f.active }))}
+              >
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>Active</div>
+                  <div className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", marginTop: "var(--tally-spacing-xs)" }}>Only active templates appear in the note template picker</div>
+                </div>
+                <Switch checked={noteTemplateForm.active} onChange={(e) => setNoteTemplateForm((f) => ({ ...f, active: (e.target as HTMLInputElement).checked }))} onClick={(e) => e.stopPropagation()} />
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter className="flex flex-row justify-end gap-density-sm border-t border-border px-density-lg py-density-md dark:border-gray-700">
+            <Button variant="outline" size="sm" onClick={closeNoteTemplatePanel}>Cancel</Button>
+            <Button size="sm" className="gap-1.5" onClick={saveNoteTemplate} disabled={noteTemplateSaving || !noteTemplateForm.name.trim()}>
+              <Icon name="check" size="var(--tally-icon-size-sm)" />
+              {noteTemplateSaving ? "Saving…" : "Save template"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {noteTemplateToast.show && (
+        <div
+          className="fixed z-[200] flex items-center gap-density-sm rounded-density-md border border-green-500 bg-white shadow-lg dark:border-green-600 dark:bg-gray-900"
+          style={{
+            bottom: "var(--tally-spacing-xl)",
+            right: "var(--tally-spacing-xl)",
+            fontSize: "var(--tally-font-size-sm)",
+            padding: "var(--tally-spacing-md) var(--tally-spacing-lg)",
+            lineHeight: "var(--tally-line-height-normal)",
+          }}
+        >
+          <Icon name="check" size="var(--tally-icon-size-md)" className="shrink-0 text-green-600 dark:text-green-400" />
+          <span>{noteTemplateToast.message}</span>
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import Button from "@/components/Button/Button";
 import Input from "@/components/Input/Input";
 import { Icon } from "@/components/ui/icon";
+import NoteTemplatePickerModal, { type NoteTemplateItem } from "@/components/crm/NoteTemplatePickerModal";
 import type { Attachment, CaseItem, Communication, Activity } from "@/types/crm";
 
 const DRAFT_KEY_PREFIX = "note-draft-";
@@ -57,6 +58,26 @@ export default function NotePanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const draftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [templates, setTemplates] = useState<NoteTemplateItem[]>([]);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch("/api/note-templates?active=true")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => { if (!cancelled) setTemplates(data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [open]);
+
+  const applyTemplate = useCallback((tpl: NoteTemplateItem) => {
+    setTitle(tpl.title);
+    setBody(tpl.body);
+    if (editorRef.current) editorRef.current.innerHTML = tpl.body;
+    setTemplatePickerOpen(false);
+  }, []);
 
   const draftKey = `${DRAFT_KEY_PREFIX}${caseItem.id}`;
   const contained = !!portalContainer;
@@ -347,6 +368,21 @@ export default function NotePanel({
 
   const formContent = (
     <>
+      {/* Template picker trigger */}
+      {templates.length > 0 && (
+        <div className="mb-1">
+          <button
+            type="button"
+            onClick={() => setTemplatePickerOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 font-medium text-[#2C365D] transition-colors hover:bg-[#2C365D]/5 dark:border-gray-700 dark:text-[#7c8cb8] dark:hover:bg-[#7c8cb8]/10"
+            style={{ fontSize: "var(--tally-font-size-xs)" }}
+          >
+            <Icon name="sticky_note_2" size={14} />
+            Use template
+          </button>
+        </div>
+      )}
+
       {/* Title input */}
       <Input
         placeholder="Title"
@@ -541,6 +577,12 @@ export default function NotePanel({
             {formContent}
           </div>
         </div>
+        <NoteTemplatePickerModal
+          open={templatePickerOpen}
+          onClose={() => setTemplatePickerOpen(false)}
+          onSelect={applyTemplate}
+          templates={templates}
+        />
       </>,
       portalTarget
     );
@@ -624,5 +666,15 @@ export default function NotePanel({
     </div>
   );
 
-  return createPortal(miniCard, portalTarget);
+  return (
+    <>
+      {createPortal(miniCard, portalTarget)}
+      <NoteTemplatePickerModal
+        open={templatePickerOpen}
+        onClose={() => setTemplatePickerOpen(false)}
+        onSelect={applyTemplate}
+        templates={templates}
+      />
+    </>
+  );
 }
