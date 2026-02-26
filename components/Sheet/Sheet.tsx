@@ -117,22 +117,22 @@ const SheetContent = React.forwardRef<
   const sideClasses = {
     top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
     right:
-      "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+      "top-3 right-3 bottom-3 w-3/4 rounded-2xl data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
     bottom:
       "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-    left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+    left: "top-3 left-3 bottom-3 w-3/4 rounded-2xl data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
   };
 
   return (
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/50"
+        className="fixed inset-0 z-50 bg-white/70 dark:bg-black/70 backdrop-blur-[0.5px]"
         onClick={() => setOpen(false)}
       />
       <div
         ref={ref}
         className={cn(
-          "fixed z-50 gap-4 bg-white p-6 shadow-lg transition ease-in-out",
+          "fixed z-50 gap-4 bg-white p-6 shadow-2xl ring-1 ring-black/5 transition ease-in-out",
           sideClasses[side],
           className
         )}

@@ -522,7 +522,7 @@ export default function NotePanel({
     return createPortal(
       <>
         <div
-          className={`${posClass} inset-0 z-50 bg-black/50`}
+          className={`${posClass} inset-0 z-50 bg-white/70 dark:bg-black/70 backdrop-blur-[0.5px]`}
           aria-hidden
           onClick={() => setExpanded(false)}
         />

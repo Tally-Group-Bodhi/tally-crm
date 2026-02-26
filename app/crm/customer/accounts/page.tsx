@@ -105,7 +105,7 @@ function NewAccountModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="new-account-modal-title"
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-white/70 dark:bg-black/70 backdrop-blur-[0.5px]"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div

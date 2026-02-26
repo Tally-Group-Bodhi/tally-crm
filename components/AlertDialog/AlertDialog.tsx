@@ -116,7 +116,7 @@ const AlertDialogContent = React.forwardRef<
   return (
     <>
       <div
-        className="fixed inset-0 z-50 bg-black/50"
+        className="fixed inset-0 z-50 bg-white/70 dark:bg-black/70 backdrop-blur-[0.5px]"
         onClick={() => setOpen(false)}
       />
       <div

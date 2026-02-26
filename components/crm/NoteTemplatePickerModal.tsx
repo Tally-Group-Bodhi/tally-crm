@@ -91,7 +91,7 @@ export default function NoteTemplatePickerModal({
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 z-[100] bg-black/40"
+        className="fixed inset-0 z-[100] bg-white/70 dark:bg-black/70 backdrop-blur-[0.5px]"
         onClick={onClose}
         aria-hidden
       />
