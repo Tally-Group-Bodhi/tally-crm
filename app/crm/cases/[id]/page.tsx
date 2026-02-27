@@ -21,6 +21,7 @@ export default function CaseDetailPage() {
   const [linkModalOpen, setLinkModalOpen] = React.useState(false);
   const [notePanelOpen, setNotePanelOpen] = React.useState(false);
   const [callLogPanelOpen, setCallLogPanelOpen] = React.useState(false);
+  const [emailPanelOpen, setEmailPanelOpen] = React.useState(false);
   const [caseItem, setCaseItem] = React.useState<CaseItem | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [notFound, setNotFound] = React.useState(false);
@@ -136,11 +137,12 @@ export default function CaseDetailPage() {
           onOpenLinkModal={() => setLinkModalOpen(true)}
           onOpenNotePanel={() => setNotePanelOpen(true)}
           onOpenCallLogPanel={() => setCallLogPanelOpen(true)}
-          relatedCasesMap={useDb ? relatedCasesMap : undefined}
+          onOpenEmailPanel={() => setEmailPanelOpen(true)}
+          relatedCasesMap={useDb ? relatedCasesMap : undefined} 
         />
       </div>
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto">
+      <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
         <CaseDetailContent
           caseItem={caseItem}
           account={account}
@@ -149,6 +151,7 @@ export default function CaseDetailPage() {
           onOpenLinkModal={() => setLinkModalOpen(true)}
           onOpenNotePanel={() => setNotePanelOpen(true)}
           onOpenCallLogPanel={() => setCallLogPanelOpen(true)}
+          onOpenEmailPanel={() => setEmailPanelOpen(true)}
           onUpdateCase={handleUpdate}
           onDeleteCase={useDb ? handleDelete : undefined}
           relatedCasesMap={useDb ? relatedCasesMap : undefined}
@@ -156,6 +159,8 @@ export default function CaseDetailPage() {
           onCloseNotePanel={() => setNotePanelOpen(false)}
           callLogPanelOpen={callLogPanelOpen}
           onCloseCallLogPanel={() => setCallLogPanelOpen(false)}
+          emailPanelOpen={emailPanelOpen}
+          onCloseEmailPanel={() => setEmailPanelOpen(false)}
         />
       </div>
 

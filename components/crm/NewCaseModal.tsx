@@ -45,7 +45,7 @@ const CASE_REASONS = [
   "General Enquiry",
   "Other",
 ] as const;
-const OWNER_OPTIONS = ["Priya Sharma", "Daniel Cooper", "John Smith", "Unassigned"];
+const OWNER_OPTIONS = ["John Smith", "Daniel Cooper", "Unassigned"];
 /** Default to logged-in user; in this app that's John Smith (could come from auth/session later) */
 const DEFAULT_OWNER = "John Smith";
 const CASE_STATUSES: CaseStatus[] = ["New", "In Progress", "Pending", "Resolved", "Closed"];

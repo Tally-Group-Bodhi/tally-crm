@@ -16,6 +16,7 @@ import DocumentAttachments from "@/components/crm/DocumentAttachments";
 import CloseCaseModal from "@/components/crm/CloseCaseModal";
 import NotePanel from "@/components/crm/NotePanel";
 import CallLogPanel from "@/components/crm/CallLogPanel";
+import EmailPanel from "@/components/crm/EmailPanel";
 import {
   Dialog,
   DialogContent,
@@ -129,6 +130,8 @@ function DataField({
   );
 }
 
+/* ─── Scrollable case tabs ──────────────────────────────────────────── */
+
 interface CaseDetailContentProps {
   caseItem: CaseItem;
   account: Account;
@@ -143,6 +146,8 @@ interface CaseDetailContentProps {
   onOpenNotePanel?: () => void;
   /** Callback to open the call log panel */
   onOpenCallLogPanel?: () => void;
+  /** Callback to open the email panel */
+  onOpenEmailPanel?: () => void;
   /** When set (e.g. DB mode), updates are persisted via API */
   onUpdateCase?: (payload: Partial<CaseItem>) => void | Promise<void>;
   /** When set (e.g. DB mode), show Delete button and call this on confirm */
@@ -157,7 +162,11 @@ interface CaseDetailContentProps {
   callLogPanelOpen?: boolean;
   /** Close the call log panel */
   onCloseCallLogPanel?: () => void;
-  /** When set (e.g. tab view), note/call panels are portaled into this container */
+  /** Email panel open state (controlled by parent) */
+  emailPanelOpen?: boolean;
+  /** Close the email panel */
+  onCloseEmailPanel?: () => void;
+  /** When set (e.g. tab view), note/call/email panels are portaled into this container */
   portalContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
@@ -170,6 +179,7 @@ export default function CaseDetailContent({
   onOpenLinkModal,
   onOpenNotePanel,
   onOpenCallLogPanel,
+  onOpenEmailPanel,
   onUpdateCase,
   onDeleteCase,
   relatedCasesMap,
@@ -177,6 +187,8 @@ export default function CaseDetailContent({
   onCloseNotePanel,
   callLogPanelOpen = false,
   onCloseCallLogPanel,
+  emailPanelOpen = false,
+  onCloseEmailPanel,
   portalContainerRef,
 }: CaseDetailContentProps) {
   const handleNotePanelOpenChange = React.useCallback(
@@ -190,6 +202,12 @@ export default function CaseDetailContent({
       if (!open) onCloseCallLogPanel?.();
     },
     [onCloseCallLogPanel]
+  );
+  const handleEmailPanelOpenChange = React.useCallback(
+    (open: boolean) => {
+      if (!open) onCloseEmailPanel?.();
+    },
+    [onCloseEmailPanel]
   );
   const resolveCase = React.useCallback(
     (caseNum: string) => relatedCasesMap?.get(caseNum) ?? getCaseByCaseNumber(caseNum),
@@ -323,7 +341,7 @@ export default function CaseDetailContent({
   ]);
 
   const CURRENT_USER = "John Smith";
-  const TEAM_MEMBERS = ["John Smith", "Priya Sharma", "Daniel Cooper"];
+  const TEAM_MEMBERS = ["John Smith", "Daniel Cooper"];
   const isUnassigned = caseItem.owner === "Unassigned";
 
   const handleAssign = React.useCallback(
@@ -493,10 +511,10 @@ export default function CaseDetailContent({
         </div>
 
         {/* Status bar and SLA */}
-        <div className="mt-4 flex min-w-0 flex-col items-stretch justify-between gap-3 rounded-lg border border-border bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 sm:flex-row sm:items-center">
+        <div className="mt-4 flex min-w-0 flex-col items-stretch justify-between gap-3 rounded-lg border border-border bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 xl:flex-row xl:items-center">
           <StatusProgressBar
             currentStatus={caseItem.status}
-            className="min-w-0 w-full flex-1 sm:min-w-0"
+            className="min-w-0 w-full flex-1 xl:min-w-0"
             onStatusChange={
               onUpdateCase
                 ? (newStatus) => {
@@ -509,7 +527,7 @@ export default function CaseDetailContent({
                 : undefined
             }
           />
-          <div className="flex w-full shrink-0 items-center justify-end gap-4 border-t border-border pt-4 dark:border-gray-700 sm:w-auto sm:justify-end sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4">
+          <div className="flex w-full shrink-0 items-center justify-end gap-4 border-t border-border pt-4 dark:border-gray-700 xl:w-auto xl:justify-end xl:border-t-0 xl:border-l xl:pt-0 xl:pl-4">
             <div className="text-right">
               <p
                 className="font-medium uppercase tracking-wide text-muted-foreground"
@@ -535,54 +553,17 @@ export default function CaseDetailContent({
 
       {/* Tabbed Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} variant="inline">
-        {/* Small viewport: dropdown */}
-        <div className="mb-4 sm:hidden">
-          <div className="relative">
-            <select
-              value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value)}
-              className="w-full cursor-pointer appearance-none rounded-lg border border-border bg-gray-100 py-2.5 pl-3 pr-9 font-medium text-gray-900 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
-              style={{ fontSize: "var(--tally-font-size-sm)" }}
-            >
-              <option value="request">Request Information</option>
-              <option value="communications">
-                Communications ({caseItem.communications.length})
-              </option>
-              <option value="related">Related</option>
-              <option value="history">History ({caseItem.activities.length})</option>
-            </select>
-            <Icon
-              name="expand_more"
-              size={20}
-              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400"
-            />
-          </div>
-        </div>
-
-        {/* Larger viewport: horizontal tabs */}
-        <TabsList className="mb-4 hidden sm:inline-flex">
-          <TabsTrigger
-            value="request"
-            style={{ fontSize: "var(--tally-font-size-sm)" }}
-          >
+        <TabsList className="mb-4 overflow-x-auto scrollbar-hide">
+          <TabsTrigger value="request" style={{ fontSize: "var(--tally-font-size-sm)" }}>
             Request Information
           </TabsTrigger>
-          <TabsTrigger
-            value="communications"
-            style={{ fontSize: "var(--tally-font-size-sm)" }}
-          >
+          <TabsTrigger value="communications" style={{ fontSize: "var(--tally-font-size-sm)" }}>
             Communications ({caseItem.communications.length})
           </TabsTrigger>
-          <TabsTrigger
-            value="related"
-            style={{ fontSize: "var(--tally-font-size-sm)" }}
-          >
+          <TabsTrigger value="related" style={{ fontSize: "var(--tally-font-size-sm)" }}>
             Related
           </TabsTrigger>
-          <TabsTrigger
-            value="history"
-            style={{ fontSize: "var(--tally-font-size-sm)" }}
-          >
+          <TabsTrigger value="history" style={{ fontSize: "var(--tally-font-size-sm)" }}>
             History ({caseItem.activities.length})
           </TabsTrigger>
         </TabsList>
@@ -844,7 +825,10 @@ export default function CaseDetailContent({
                     <Icon name="edit" size={16} className="shrink-0 text-muted-foreground" />
                     <span>Note</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2 text-left">
+                  <DropdownMenuItem
+                    onClick={() => onOpenEmailPanel?.()}
+                    className="gap-2 text-left"
+                  >
                     <Icon name="mail" size={16} className="shrink-0 text-muted-foreground" />
                     <span>Email</span>
                   </DropdownMenuItem>
@@ -1865,6 +1849,24 @@ export default function CaseDetailContent({
         open={callLogPanelOpen}
         onOpenChange={handleCallLogPanelOpenChange}
         caseItem={caseItem}
+        onSave={
+          onUpdateCase
+            ? async ({ communication, activity }) => {
+                await onUpdateCase({
+                  communications: [...(caseItem.communications ?? []), communication],
+                  activities: [activity, ...(caseItem.activities ?? [])],
+                });
+              }
+            : undefined
+        }
+        portalContainer={portalContainerRef?.current}
+      />
+
+      <EmailPanel
+        open={emailPanelOpen}
+        onOpenChange={handleEmailPanelOpenChange}
+        caseItem={caseItem}
+        contacts={account.contacts}
         onSave={
           onUpdateCase
             ? async ({ communication, activity }) => {

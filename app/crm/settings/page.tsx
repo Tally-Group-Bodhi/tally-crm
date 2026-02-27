@@ -128,6 +128,29 @@ const defaultNoteTemplateForm = {
   active: true,
 };
 
+interface EmailTemplateItem {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  category: string;
+  description: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const EMAIL_TEMPLATE_CATEGORIES = ["General", "Billing", "Closing", "Escalation", "Field", "Onboarding", "Technical", "Commercial"];
+
+const defaultEmailTemplateForm = {
+  name: "",
+  subject: "",
+  body: "",
+  category: "",
+  description: "",
+  active: true,
+};
+
 function RoleBadge({ role, label }: { role: string; label?: string }) {
   const config: Record<string, "default" | "info" | "warning"> = {
     admin: "default",
@@ -224,6 +247,18 @@ export default function SettingsPage() {
   const [noteTemplateToast, setNoteTemplateToast] = useState({ show: false, message: "" });
   const [noteTemplateToDelete, setNoteTemplateToDelete] = useState<string | null>(null);
   const [noteTemplateSaving, setNoteTemplateSaving] = useState(false);
+
+  // Email Templates state
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplateItem[]>([]);
+  const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false);
+  const [emailTemplateSearch, setEmailTemplateSearch] = useState("");
+  const [emailTemplateFilterTab, setEmailTemplateFilterTab] = useState<"all" | "active" | "inactive">("all");
+  const [emailTemplateSheetOpen, setEmailTemplateSheetOpen] = useState(false);
+  const [editingEmailTemplateId, setEditingEmailTemplateId] = useState<string | null>(null);
+  const [emailTemplateForm, setEmailTemplateForm] = useState(defaultEmailTemplateForm);
+  const [emailTemplateToast, setEmailTemplateToast] = useState({ show: false, message: "" });
+  const [emailTemplateToDelete, setEmailTemplateToDelete] = useState<string | null>(null);
+  const [emailTemplateSaving, setEmailTemplateSaving] = useState(false);
 
   const showNoteTemplateToast = useCallback((message: string) => {
     setNoteTemplateToast({ show: true, message });
@@ -349,6 +384,136 @@ export default function SettingsPage() {
     if (res.ok) {
       await fetchNoteTemplates();
       showNoteTemplateToast("Template deleted");
+    }
+  };
+
+  // Email template helpers
+  const showEmailTemplateToast = useCallback((message: string) => {
+    setEmailTemplateToast({ show: true, message });
+    setTimeout(() => setEmailTemplateToast({ show: false, message: "" }), 3000);
+  }, []);
+
+  const fetchEmailTemplates = useCallback(async () => {
+    setEmailTemplatesLoading(true);
+    try {
+      const res = await fetch("/api/email-templates");
+      if (res.ok) {
+        const data = await res.json();
+        setEmailTemplates(data);
+      }
+    } catch {
+      /* silently fail */
+    } finally {
+      setEmailTemplatesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "templates" && emailTemplates.length === 0) {
+      fetchEmailTemplates();
+    }
+  }, [activeTab, emailTemplates.length, fetchEmailTemplates]);
+
+  const filteredEmailTemplates = useMemo(() => {
+    let list = [...emailTemplates];
+    if (emailTemplateFilterTab === "active") list = list.filter((t) => t.active);
+    else if (emailTemplateFilterTab === "inactive") list = list.filter((t) => !t.active);
+    if (emailTemplateSearch) {
+      const s = emailTemplateSearch.toLowerCase();
+      list = list.filter((t) => t.name.toLowerCase().includes(s) || t.subject.toLowerCase().includes(s));
+    }
+    return list;
+  }, [emailTemplates, emailTemplateFilterTab, emailTemplateSearch]);
+
+  const emailTemplateCounts = useMemo(() => ({
+    all: emailTemplates.length,
+    active: emailTemplates.filter((t) => t.active).length,
+    inactive: emailTemplates.filter((t) => !t.active).length,
+  }), [emailTemplates]);
+
+  const openEmailTemplatePanel = (mode: "new" | "edit", id?: string) => {
+    if (mode === "edit" && id) {
+      const tpl = emailTemplates.find((t) => t.id === id);
+      if (tpl) {
+        setEditingEmailTemplateId(id);
+        setEmailTemplateForm({
+          name: tpl.name,
+          subject: tpl.subject,
+          body: tpl.body,
+          category: tpl.category,
+          description: tpl.description,
+          active: tpl.active,
+        });
+      }
+    } else {
+      setEditingEmailTemplateId(null);
+      setEmailTemplateForm(defaultEmailTemplateForm);
+    }
+    setEmailTemplateSheetOpen(true);
+  };
+
+  const closeEmailTemplatePanel = () => {
+    setEmailTemplateSheetOpen(false);
+    setEditingEmailTemplateId(null);
+  };
+
+  const saveEmailTemplate = async () => {
+    if (!emailTemplateForm.name.trim()) return;
+    setEmailTemplateSaving(true);
+    try {
+      if (editingEmailTemplateId) {
+        const res = await fetch(`/api/email-templates/${editingEmailTemplateId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(emailTemplateForm),
+        });
+        if (res.ok) {
+          await fetchEmailTemplates();
+          showEmailTemplateToast("Template updated");
+        }
+      } else {
+        const res = await fetch("/api/email-templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(emailTemplateForm),
+        });
+        if (res.ok) {
+          await fetchEmailTemplates();
+          showEmailTemplateToast("Template created");
+        }
+      }
+      closeEmailTemplatePanel();
+    } finally {
+      setEmailTemplateSaving(false);
+    }
+  };
+
+  const duplicateEmailTemplate = async (id: string) => {
+    const tpl = emailTemplates.find((t) => t.id === id);
+    if (!tpl) return;
+    const res = await fetch("/api/email-templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: `${tpl.name} (copy)`,
+        subject: tpl.subject,
+        body: tpl.body,
+        category: tpl.category,
+        description: tpl.description,
+        active: false,
+      }),
+    });
+    if (res.ok) {
+      await fetchEmailTemplates();
+      showEmailTemplateToast("Template duplicated — edit to customise");
+    }
+  };
+
+  const deleteEmailTemplate = async (id: string) => {
+    const res = await fetch(`/api/email-templates/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      await fetchEmailTemplates();
+      showEmailTemplateToast("Template deleted");
     }
   };
 
@@ -910,6 +1075,141 @@ export default function SettingsPage() {
               </Card>
             )}
 
+            {/* Email Templates */}
+            {activeTab === "templates" && (
+              <Card className="shadow-none">
+                <SectionHeader
+                  title="Email Templates"
+                  description="Create reusable templates to prefill emails when composing from a case."
+                  action={
+                    <Button size="sm" className="gap-1.5" onClick={() => openEmailTemplatePanel("new")}>
+                      <Icon name="add" size="var(--tally-icon-size-sm)" />
+                      New Template
+                    </Button>
+                  }
+                />
+                <div className="px-density-lg pb-density-lg">
+                  <div className="mb-density-md mt-density-lg flex border-b border-border dark:border-gray-700">
+                    {([
+                      { key: "all" as const, label: "All", count: emailTemplateCounts.all },
+                      { key: "active" as const, label: "Active", count: emailTemplateCounts.active },
+                      { key: "inactive" as const, label: "Inactive", count: emailTemplateCounts.inactive },
+                    ]).map(({ key, label, count }) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setEmailTemplateFilterTab(key)}
+                        className={cn(
+                          "flex items-center gap-density-sm border-b-2 px-density-md py-density-sm font-medium transition-colors",
+                          emailTemplateFilterTab === key
+                            ? "border-[#2C365D] text-[#2C365D] dark:border-[#7c8cb8] dark:text-[#7c8cb8]"
+                            : "border-transparent text-muted-foreground hover:text-gray-900 dark:hover:text-gray-100"
+                        )}
+                        style={{ fontSize: "var(--tally-font-size-sm)" }}
+                      >
+                        {label}
+                        <span
+                          className={cn(
+                            "inline-flex min-w-[18px] items-center justify-center rounded-full px-density-sm font-semibold",
+                            emailTemplateFilterTab === key ? "bg-[#2C365D]/10 text-[#2C365D] dark:bg-[#7c8cb8]/10 dark:text-[#7c8cb8]" : "bg-gray-200 text-muted-foreground dark:bg-gray-700 dark:text-gray-400"
+                          )}
+                          style={{ height: "var(--tally-spacing-lg)", fontSize: "var(--tally-font-size-xs)" }}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="mb-density-md flex flex-wrap items-center gap-density-md">
+                    <div className="relative max-w-[320px] flex-1">
+                      <Icon name="search" size="var(--tally-icon-size-sm)" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search templates..."
+                        value={emailTemplateSearch}
+                        onChange={(e) => setEmailTemplateSearch(e.target.value)}
+                        className="h-9 w-full rounded-density-md border border-border bg-white pl-9 pr-density-sm outline-none placeholder:text-muted-foreground focus:border-[#2C365D] focus:ring-1 focus:ring-[#2C365D] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                        style={{ fontSize: "var(--tally-font-size-sm)", paddingTop: "var(--tally-spacing-sm)", paddingBottom: "var(--tally-spacing-sm)" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded-density-md border border-border dark:border-gray-700">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Template name</TableHead>
+                          <TableHead className="w-28 bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Category</TableHead>
+                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Default subject</TableHead>
+                          <TableHead className="w-24 bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
+                          <TableHead className="w-24 bg-gray-50 dark:bg-gray-800/50" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {emailTemplatesLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-density-xl text-center text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                              Loading…
+                            </TableCell>
+                          </TableRow>
+                        ) : filteredEmailTemplates.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="py-density-xl text-center text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                              {emailTemplates.length === 0 ? "No templates yet. Create one to get started." : "No templates match your filters."}
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredEmailTemplates.map((tpl) => (
+                            <TableRow key={tpl.id} className="group">
+                              <TableCell>
+                                <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                  {tpl.name}
+                                </div>
+                                {tpl.description && (
+                                  <div className="line-clamp-1 text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                    {tpl.description.slice(0, 80)}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {tpl.category ? (
+                                  <Badge variant="outline" className="text-muted-foreground">{tpl.category}</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>—</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                {tpl.subject || "—"}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={tpl.active ? "success" : "outline"} className={cn("whitespace-nowrap", !tpl.active && "text-muted-foreground")}>
+                                  {tpl.active ? "● Active" : "○ Inactive"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-density-xs opacity-0 transition-opacity group-hover:opacity-100">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEmailTemplatePanel("edit", tpl.id)} title="Edit">
+                                    <Icon name="edit" size="var(--tally-icon-size-sm)" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicateEmailTemplate(tpl.id)} title="Duplicate">
+                                    <Icon name="content_copy" size="var(--tally-icon-size-sm)" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-[#C40000]/10 hover:text-[#C40000]" onClick={() => setEmailTemplateToDelete(tpl.id)} title="Delete">
+                                    <Icon name="delete" size="var(--tally-icon-size-sm)" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* Note Templates */}
             {activeTab === "noteTemplates" && (
               <Card className="shadow-none">
@@ -975,10 +1275,10 @@ export default function SettingsPage() {
                       <TableHeader>
                         <TableRow className="hover:bg-transparent">
                           <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Template name</TableHead>
-                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Category</TableHead>
+                          <TableHead className="w-28 bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Category</TableHead>
                           <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Default title</TableHead>
-                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
-                          <TableHead className="w-10 bg-gray-50 dark:bg-gray-800/50" />
+                          <TableHead className="w-24 bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
+                          <TableHead className="w-24 bg-gray-50 dark:bg-gray-800/50" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1018,7 +1318,7 @@ export default function SettingsPage() {
                                 {tpl.title || "—"}
                               </TableCell>
                               <TableCell>
-                                <Badge variant={tpl.active ? "success" : "outline"} className={!tpl.active ? "text-muted-foreground" : undefined}>
+                                <Badge variant={tpl.active ? "success" : "outline"} className={cn("whitespace-nowrap", !tpl.active && "text-muted-foreground")}>
                                   {tpl.active ? "● Active" : "○ Inactive"}
                                 </Badge>
                               </TableCell>
@@ -1639,6 +1939,160 @@ export default function SettingsPage() {
         >
           <Icon name="check" size="var(--tally-icon-size-md)" className="shrink-0 text-green-600 dark:text-green-400" />
           <span>{noteTemplateToast.message}</span>
+        </div>
+      )}
+
+      {/* Email Template delete confirmation */}
+      <AlertDialog open={emailTemplateToDelete != null} onOpenChange={(open) => !open && setEmailTemplateToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete email template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The template will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="hover:bg-[#C40000]/90 bg-[#C40000] text-white focus-visible:ring-[#C40000] dark:hover:bg-[#C40000]/80"
+              onClick={() => {
+                if (emailTemplateToDelete != null) {
+                  deleteEmailTemplate(emailTemplateToDelete);
+                  setEmailTemplateToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Email Template slide-over panel */}
+      <Sheet open={emailTemplateSheetOpen} onOpenChange={setEmailTemplateSheetOpen}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-white p-0 dark:border-gray-700 dark:bg-gray-900 sm:!max-w-[600px]"
+          style={{ maxWidth: "min(600px, 100vw)" }}
+        >
+          <SheetHeader className="flex flex-row items-start justify-between gap-density-md border-b border-border px-density-lg py-density-md dark:border-gray-700">
+            <div>
+              <SheetTitle className="font-semibold text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}>
+                {editingEmailTemplateId ? "Edit Template" : "New Template"}
+              </SheetTitle>
+              <SheetDescription className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: "var(--tally-line-height-normal)" }}>
+                {editingEmailTemplateId ? emailTemplates.find((t) => t.id === editingEmailTemplateId)?.name : "Create a reusable email template"}
+              </SheetDescription>
+            </div>
+            <SheetClose className="relative right-0 top-0 rounded-density-md p-density-sm hover:bg-gray-100 dark:hover:bg-gray-800" />
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto px-density-lg py-density-lg">
+            <div className="mb-density-xl">
+              <div className="border-b border-border pb-density-xs font-semibold uppercase tracking-wider text-muted-foreground dark:border-gray-700" style={{ fontSize: "var(--tally-font-size-xs)", letterSpacing: "0.08em", marginBottom: "var(--tally-spacing-md)" }}>Template Details</div>
+              <div className="space-y-density-md">
+                <div>
+                  <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Template name <span className="text-[#C40000]">*</span></label>
+                  <Input
+                    value={emailTemplateForm.name}
+                    onChange={(e) => setEmailTemplateForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Case Acknowledgement"
+                    className="h-9"
+                  />
+                  <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Internal name shown in the template picker when composing an email.</p>
+                </div>
+                <div>
+                  <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Default subject</label>
+                  <Input
+                    value={emailTemplateForm.subject}
+                    onChange={(e) => setEmailTemplateForm((f) => ({ ...f, subject: e.target.value }))}
+                    placeholder="e.g. Re: Your enquiry — {{caseNumber}}"
+                    className="h-9"
+                  />
+                  <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Pre-fills the email subject line. Users can edit it before sending.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-density-md">
+                  <div>
+                    <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Category</label>
+                    <Select
+                      value={emailTemplateForm.category}
+                      onChange={(e) => setEmailTemplateForm((f) => ({ ...f, category: e.target.value }))}
+                      className="h-9"
+                    >
+                      <option value="">None</option>
+                      {EMAIL_TEMPLATE_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Description</label>
+                    <Input
+                      value={emailTemplateForm.description}
+                      onChange={(e) => setEmailTemplateForm((f) => ({ ...f, description: e.target.value }))}
+                      placeholder="Brief description of when to use this template"
+                      className="h-9"
+                    />
+                    <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Shown in the template picker to help users choose the right one.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-density-xl">
+              <div className="border-b border-border pb-density-xs font-semibold uppercase tracking-wider text-muted-foreground dark:border-gray-700" style={{ fontSize: "var(--tally-font-size-xs)", letterSpacing: "0.08em", marginBottom: "var(--tally-spacing-md)" }}>Content</div>
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Email body</label>
+                <textarea
+                  value={emailTemplateForm.body}
+                  onChange={(e) => setEmailTemplateForm((f) => ({ ...f, body: e.target.value }))}
+                  placeholder="Enter the template content…"
+                  rows={10}
+                  className="w-full rounded-density-md border border-border bg-white px-density-md py-density-sm text-gray-900 outline-none placeholder:text-muted-foreground focus:border-[#2C365D] focus:ring-1 focus:ring-[#2C365D] dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+                  style={{ fontSize: "var(--tally-font-size-sm)", lineHeight: "var(--tally-line-height-normal)", resize: "vertical" }}
+                />
+                <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Pre-fills the email body. Use placeholders like {"{{customerName}}"}, {"{{caseNumber}}"}, {"{{agentName}}"}.</p>
+              </div>
+            </div>
+
+            <div>
+              <div className="border-b border-border pb-density-xs font-semibold uppercase tracking-wider text-muted-foreground dark:border-gray-700" style={{ fontSize: "var(--tally-font-size-xs)", letterSpacing: "0.08em", marginBottom: "var(--tally-spacing-md)" }}>Status</div>
+              <div
+                className="flex cursor-pointer items-center justify-between rounded-density-md border border-border bg-gray-50 px-density-md py-density-sm dark:border-gray-700 dark:bg-gray-800"
+                onClick={() => setEmailTemplateForm((f) => ({ ...f, active: !f.active }))}
+              >
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>Active</div>
+                  <div className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", marginTop: "var(--tally-spacing-xs)" }}>Only active templates appear in the email template picker</div>
+                </div>
+                <Switch checked={emailTemplateForm.active} onChange={(e) => setEmailTemplateForm((f) => ({ ...f, active: (e.target as HTMLInputElement).checked }))} onClick={(e) => e.stopPropagation()} />
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter className="flex flex-row justify-end gap-density-sm border-t border-border px-density-lg py-density-md dark:border-gray-700">
+            <Button variant="outline" size="sm" onClick={closeEmailTemplatePanel}>Cancel</Button>
+            <Button size="sm" className="gap-1.5" onClick={saveEmailTemplate} disabled={emailTemplateSaving || !emailTemplateForm.name.trim()}>
+              <Icon name="check" size="var(--tally-icon-size-sm)" />
+              {emailTemplateSaving ? "Saving…" : "Save template"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {emailTemplateToast.show && (
+        <div
+          className="fixed z-[200] flex items-center gap-density-sm rounded-density-md border border-green-500 bg-white shadow-lg dark:border-green-600 dark:bg-gray-900"
+          style={{
+            bottom: "var(--tally-spacing-xl)",
+            right: "var(--tally-spacing-xl)",
+            fontSize: "var(--tally-font-size-sm)",
+            padding: "var(--tally-spacing-md) var(--tally-spacing-lg)",
+            lineHeight: "var(--tally-line-height-normal)",
+          }}
+        >
+          <Icon name="check" size="var(--tally-icon-size-md)" className="shrink-0 text-green-600 dark:text-green-400" />
+          <span>{emailTemplateToast.message}</span>
         </div>
       )}
     </div>

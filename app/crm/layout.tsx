@@ -12,6 +12,7 @@ import type { NavigationItem } from "@/components/NavigationBar/NavigationBar";
 import { type DensityMode, useDensityPreference } from "@/lib/density";
 import { cn } from "@/lib/utils";
 import { ToastProvider, ToastViewport, useToast } from "@/components/Toast/Toast";
+import { useMediaQuery } from "@/lib/use-media-query";
 
 /* ─── Nav items ─────────────────────────────────────────────────────────── */
 
@@ -86,8 +87,14 @@ export default function CRMLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [navCollapsed, setNavCollapsed] = React.useState(false);
+  const isLg = useMediaQuery("(min-width: 1024px)");
+  const [navCollapsed, setNavCollapsed] = React.useState(!isLg);
   const [profileOpen, setProfileOpen] = React.useState(false);
+
+  // Auto-collapse / expand when the viewport crosses the lg breakpoint
+  React.useEffect(() => {
+    setNavCollapsed(!isLg);
+  }, [isLg]);
   const profileRef = React.useRef<HTMLDivElement>(null);
   const { density, setDensity, resetToAuto, isAutoDetect } = useDensityPreference();
   const activeDensity: DensityMode | "auto" = isAutoDetect ? "auto" : density;

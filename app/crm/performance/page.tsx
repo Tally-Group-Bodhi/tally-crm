@@ -55,7 +55,7 @@ const SLA_TYPES = [
 ];
 
 const OVERDUE_ACTIONS = [
-  { case: "CASE-2024-0891", type: "Response", owner: "Priya Sharma", overdue: "2h" },
+  { case: "CASE-2024-0891", type: "Response", owner: "John Smith", overdue: "2h" },
   { case: "CASE-2024-0887", type: "Resolution", owner: "Daniel Cooper", overdue: "1d" },
   { case: "CASE-2024-0882", type: "Response", owner: "Unassigned", overdue: "3h" },
 ];

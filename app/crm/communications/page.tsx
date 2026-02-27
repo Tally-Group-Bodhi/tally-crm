@@ -36,7 +36,7 @@ const TIMELINE_ITEMS = [
     title: "Billing Statement - November 2024",
     customer: "Energy Plus Co",
     summary: "Sent monthly billing statement and payment reminder.",
-    meta: { user: "Priya Sharma" },
+    meta: { user: "John Smith" },
   },
   {
     id: "3",

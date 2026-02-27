@@ -28,6 +28,9 @@ export default function StatusProgressBar({
     (s) => s.status === currentStatus
   );
 
+  const stepClass =
+    "flex shrink-0 flex-col items-center gap-0.5 lg:flex-row lg:gap-1.5";
+
   return (
     <div className={cn("flex items-center", className)}>
       {STATUS_STEPS.map((step, index) => {
@@ -55,7 +58,7 @@ export default function StatusProgressBar({
             </div>
             <span
               className={cn(
-                "whitespace-nowrap text-xs font-medium",
+                "whitespace-nowrap text-[10px] font-medium lg:text-xs",
                 isCurrent
                   ? "text-[#2C365D] dark:text-[#7c8cb8]"
                   : isCompleted
@@ -74,13 +77,16 @@ export default function StatusProgressBar({
               <button
                 type="button"
                 onClick={() => onStatusChange(step.status)}
-                className="flex shrink-0 items-center gap-1.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#006180] focus-visible:ring-offset-1"
+                className={cn(
+                  stepClass,
+                  "rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#006180] focus-visible:ring-offset-1"
+                )}
                 aria-label={`Change status to ${step.status}`}
               >
                 {stepContent}
               </button>
             ) : (
-              <div className="flex shrink-0 items-center gap-1.5">
+              <div className={stepClass}>
                 {stepContent}
               </div>
             )}

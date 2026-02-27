@@ -112,8 +112,8 @@ const slaDistribution = [
 // Team workload
 const teamWorkload = [
   {
-    name: "Priya Sharma",
-    cases: mockCases.filter((c) => c.owner === "Priya Sharma").length,
+    name: "John Smith",
+    cases: mockCases.filter((c) => c.owner === "John Smith").length,
   },
   {
     name: "Daniel Cooper",

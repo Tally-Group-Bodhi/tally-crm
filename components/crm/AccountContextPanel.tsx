@@ -33,6 +33,8 @@ interface AccountContextPanelProps {
   onOpenNotePanel?: () => void;
   /** Callback to open the call log panel */
   onOpenCallLogPanel?: () => void;
+  /** Callback to open the email panel */
+  onOpenEmailPanel?: () => void;
   /** When set (e.g. DB mode), resolve case numbers to CaseItem for links */
   relatedCasesMap?: Map<string, CaseItem>;
   /** Called when the Note quick action is clicked */
@@ -109,6 +111,7 @@ export default function AccountContextPanel({
   onOpenLinkModal,
   onOpenNotePanel,
   onOpenCallLogPanel,
+  onOpenEmailPanel,
   relatedCasesMap,
   onOpenNote,
   className,
@@ -142,7 +145,7 @@ export default function AccountContextPanel({
   return (
     <aside
       className={cn(
-        "flex min-h-0 w-52 min-w-0 shrink-0 flex-col rounded-xl border border-border bg-white dark:border-gray-800 dark:bg-gray-950 sm:w-64 md:w-72",
+        "flex min-h-0 w-72 shrink-0 flex-col rounded-xl border border-border bg-white dark:border-gray-800 dark:bg-gray-950",
         className
       )}
     >
@@ -190,9 +193,11 @@ export default function AccountContextPanel({
               onClick={
                 label === "Note"
                   ? onOpenNotePanel
-                  : label === "Call"
-                    ? onOpenCallLogPanel
-                    : undefined
+                  : label === "Email"
+                    ? onOpenEmailPanel
+                    : label === "Call"
+                      ? onOpenCallLogPanel
+                      : undefined
               }
               className="flex items-center gap-1.5 rounded-md border border-border bg-white px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:hover:text-gray-100"
               style={{ fontSize: "var(--tally-font-size-xs)" }}

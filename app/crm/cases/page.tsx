@@ -47,6 +47,13 @@ const CASE_STATUSES: CaseStatus[] = [
   "Closed",
 ];
 
+const KANBAN_STATUSES: CaseStatus[] = [
+  "New",
+  "In Progress",
+  "Pending",
+  "Closed",
+];
+
 /** Status dot colours aligned with StatusBadge (info, warning, success, default, outline dot). */
 const statusColors: Record<CaseStatus, string> = {
   New: "bg-blue-500",
@@ -152,6 +159,7 @@ export default function CaseListPage() {
   const [tabViewSelectedCaseId, setTabViewSelectedCaseId] = React.useState<string | null>(null);
   const [tabViewNotePanelOpen, setTabViewNotePanelOpen] = React.useState(false);
   const [tabViewCallLogPanelOpen, setTabViewCallLogPanelOpen] = React.useState(false);
+  const [tabViewEmailPanelOpen, setTabViewEmailPanelOpen] = React.useState(false);
   const [listView, setListView] = React.useState<ListViewId>("all");
   const kanbanRef = React.useRef<HTMLDivElement>(null);
   const [cases, setCases] = React.useState(() => mergeMockWithSession(mockCases));
@@ -381,7 +389,7 @@ export default function CaseListPage() {
 
   const kanbanByStatus = React.useMemo(() => {
     const byStatus: Record<string, CaseItem[]> = {};
-    for (const status of CASE_STATUSES) {
+    for (const status of KANBAN_STATUSES) {
       byStatus[status] = filtered.filter((c) => c.status === status);
     }
     return byStatus;
@@ -987,10 +995,11 @@ export default function CaseListPage() {
                       currentCaseId={caseItem.id}
                       onOpenNotePanel={() => setTabViewNotePanelOpen(true)}
                       onOpenCallLogPanel={() => setTabViewCallLogPanelOpen(true)}
+                      onOpenEmailPanel={() => setTabViewEmailPanelOpen(true)}
                     />
                     <div
                       ref={tabViewCaseDetailContainerRef}
-                      className="relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-auto"
+                      className="relative min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"
                     >
                       <CaseDetailContent
                         caseItem={caseItem}
@@ -1000,11 +1009,14 @@ export default function CaseListPage() {
                         relatedCaseNumbers={caseItem.relatedCases}
                         onOpenNotePanel={() => setTabViewNotePanelOpen(true)}
                         onOpenCallLogPanel={() => setTabViewCallLogPanelOpen(true)}
+                        onOpenEmailPanel={() => setTabViewEmailPanelOpen(true)}
                         onUpdateCase={handleTabViewUpdateCase}
                         notePanelOpen={tabViewNotePanelOpen}
                         onCloseNotePanel={() => setTabViewNotePanelOpen(false)}
                         callLogPanelOpen={tabViewCallLogPanelOpen}
                         onCloseCallLogPanel={() => setTabViewCallLogPanelOpen(false)}
+                        emailPanelOpen={tabViewEmailPanelOpen}
+                        onCloseEmailPanel={() => setTabViewEmailPanelOpen(false)}
                         portalContainerRef={tabViewCaseDetailContainerRef}
                       />
                     </div>
@@ -1028,9 +1040,9 @@ export default function CaseListPage() {
         >
           <div
             className="grid gap-density-lg pb-density-md"
-            style={{ gridTemplateColumns: `repeat(${CASE_STATUSES.length}, minmax(260px, 1fr))` }}
+            style={{ gridTemplateColumns: `repeat(${KANBAN_STATUSES.length}, minmax(260px, 1fr))` }}
           >
-            {CASE_STATUSES.map((status) => {
+            {KANBAN_STATUSES.map((status) => {
               const statusCases = kanbanByStatus[status] ?? [];
               return (
                 <CaseKanbanColumn
