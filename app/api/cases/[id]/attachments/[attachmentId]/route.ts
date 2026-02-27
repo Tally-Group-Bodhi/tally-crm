@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { createReadStream, existsSync } from "fs";
+import { createReadStream, existsSync, statSync } from "fs";
 import path from "path";
 import { Readable } from "stream";
 import { prisma, useDatabase, prismaCaseToCaseItem } from "@/lib/db";
-import { UPLOADS_DIR } from "@/lib/attachments";
+import { UPLOADS_DIR, mimeTypeFromFileName } from "@/lib/attachments";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/cases/[id]/attachments/[attachmentId] — download a case attachment */
+/** GET /api/cases/[id]/attachments/[attachmentId] — download or view a case attachment.
+ *  Append ?inline=true to serve with Content-Disposition: inline (for PDF/image preview). */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; attachmentId: string }> }
 ) {
   if (!useDatabase() || !prisma) {
@@ -43,13 +44,21 @@ export async function GET(
     );
   }
 
+  const { searchParams } = new URL(request.url);
+  const inline = searchParams.get("inline") === "true";
+  const mime = mimeTypeFromFileName(attachment.name);
+  const filename = attachment.name.replace(/[^\w\s.-]/gi, "_");
+  const disposition = inline ? `inline; filename="${filename}"` : `attachment; filename="${filename}"`;
+
   const nodeStream = createReadStream(absolutePath);
   const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
-  const filename = attachment.name.replace(/[^\w\s.-]/gi, "_");
+  const fileSize = statSync(absolutePath).size;
+
   return new Response(webStream, {
     headers: {
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Type": mime,
+      "Content-Disposition": disposition,
+      "Content-Length": String(fileSize),
     },
   });
 }

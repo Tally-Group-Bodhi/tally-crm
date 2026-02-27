@@ -21,6 +21,28 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Map file extension to a browser-renderable MIME type */
+export function mimeTypeFromFileName(name: string): string {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    pdf: "application/pdf",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    gif: "image/gif",
+    webp: "image/webp",
+    svg: "image/svg+xml",
+    txt: "text/plain",
+    csv: "text/csv",
+    json: "application/json",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    xls: "application/vnd.ms-excel",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  };
+  return map[ext] ?? "application/octet-stream";
+}
+
 /** Sanitize filename for storage (keep extension, replace unsafe chars) */
 export function sanitizeFileName(name: string): string {
   const base = name.replace(/[^\w\s.-]/gi, "_").replace(/\s+/g, "_");

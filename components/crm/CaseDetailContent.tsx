@@ -453,6 +453,17 @@ export default function CaseDetailContent({
             </p>
           </div>
           <div className="flex shrink-0 items-start gap-2">
+            <Button
+              variant="outline"
+              size="md"
+              className="gap-1.5"
+              onClick={() => window.open("https://tallysolutions.com", "_blank")}
+            >
+              <svg width="12" height="16" viewBox="0 0 12 27" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+                <path d="M0 1.49839C0 0.67085 0.656 0 1.465 0H9.646C10.455 0 11.111 0.67085 11.111 1.49839V2.48323L6.392 5.75386C5.944 6.06377 5.678 6.57326 5.678 7.11734C5.678 7.66141 5.944 8.1709 6.392 8.48081L11.111 11.7514V14.283L6.392 17.5537C5.944 17.8636 5.678 18.3731 5.678 18.9171C5.678 19.4612 5.944 19.9707 6.392 20.2806L11.111 23.5512V24.7234C11.111 25.5509 10.455 26.2218 9.646 26.2218H1.465C0.656 26.2218 0 25.5509 0 24.7234V1.49839Z" fill="#00C1FF"/>
+              </svg>
+              Open Billing
+            </Button>
             <Popover open={assignPopoverOpen} onOpenChange={setAssignPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button variant="outline" size="md" className="gap-1.5" disabled={!onUpdateCase || updating}>

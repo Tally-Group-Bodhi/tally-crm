@@ -291,11 +291,12 @@ export default function DocumentAttachments({
             {previewAttachment &&
               (downloadUrl && previewAttachment.storagePath ? (
                 (() => {
-                  const previewUrl = `${downloadUrl}/${previewAttachment.id}`;
+                  const baseUrl = `${downloadUrl}/${previewAttachment.id}`;
+                  const inlineUrl = `${baseUrl}?inline=true`;
                   if (previewAttachment.type === "image") {
                     return (
                       <img
-                        src={previewUrl}
+                        src={inlineUrl}
                         alt={previewAttachment.name}
                         className="mx-auto max-h-[75vh] w-auto max-w-full object-contain"
                       />
@@ -304,7 +305,7 @@ export default function DocumentAttachments({
                   if (previewAttachment.type === "pdf") {
                     return (
                       <iframe
-                        src={previewUrl}
+                        src={inlineUrl}
                         title={previewAttachment.name}
                         className="h-[75vh] w-full border-0 rounded bg-white dark:bg-gray-800"
                       />
@@ -317,7 +318,7 @@ export default function DocumentAttachments({
                         Preview not available for this file type.
                       </p>
                       <a
-                        href={previewUrl}
+                        href={baseUrl}
                         download={previewAttachment.name}
                         className="inline-flex items-center gap-2 rounded-md bg-[#2C365D] px-4 py-2 text-sm font-medium text-white hover:bg-[#3d4a6e] dark:bg-[#7c8cb8] dark:hover:bg-[#8c9cc8]"
                       >
