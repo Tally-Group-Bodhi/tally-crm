@@ -41,20 +41,25 @@ export default function StatusProgressBar({
 
         const stepContent = (
           <>
-            <div
-              className={cn(
-                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors",
-                isClickable && "cursor-pointer hover:opacity-90",
-                isCompleted &&
-                  "border-[#008000] bg-[#008000] text-white",
-                isCurrent &&
-                  "border-[#2C365D] bg-[#2C365D] text-white",
-                !isCompleted &&
-                  !isCurrent &&
-                  "border-gray-300 bg-white text-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500"
+            <div className="relative flex shrink-0 items-center justify-center">
+              {isCurrent && (
+                <span className="absolute h-6 w-6 animate-[pulse-ring_1.8s_ease-out_infinite] rounded-full bg-[#2C365D]/50" />
               )}
-            >
-              <Icon name={isCompleted ? "check" : step.icon} size={14} />
+              <div
+                className={cn(
+                  "relative flex h-6 w-6 items-center justify-center rounded-full border-[1.5px] transition-colors",
+                  isClickable && "cursor-pointer hover:opacity-90",
+                  isCompleted &&
+                    "border-[#008000] bg-[#008000] text-white",
+                  isCurrent &&
+                    "border-[#2C365D] bg-[#2C365D] text-white",
+                  !isCompleted &&
+                    !isCurrent &&
+                    "border-gray-300 bg-white text-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500"
+                )}
+              >
+                <Icon name={isCompleted ? "check" : step.icon} size={14} />
+              </div>
             </div>
             <span
               className={cn(

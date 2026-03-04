@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tally CRM — Cases API &amp; Data Reference</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --green: #16a34a;
+      --green-light: #f0fdf4;
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --red: #dc2626;
+      --red-light: #fef2f2;
+      --purple: #7c3aed;
+      --purple-light: #f5f3ff;
+      --code-bg: #f1f5f9;
+      --code-border: #e2e8f0;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .page-header {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+      color: white;
+      padding: 48px 32px 40px;
+    }
+    .page-header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+    .page-header p { color: #bfdbfe; font-size: 1.05rem; max-width: 640px; }
+    .page-header .meta {
+      margin-top: 16px;
+      font-size: 0.85rem;
+      color: #93c5fd;
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+
+    nav.toc {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin-bottom: 40px;
+    }
+    nav.toc h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 12px; }
+    nav.toc ol { padding-left: 20px; }
+    nav.toc li { margin-bottom: 6px; }
+    nav.toc a { color: var(--primary); text-decoration: none; font-weight: 500; }
+    nav.toc a:hover { text-decoration: underline; }
+
+    section { margin-bottom: 48px; }
+    h2.section-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--primary);
+      display: inline-block;
+    }
+    h3 { font-size: 1.15rem; font-weight: 600; margin: 24px 0 12px; }
+    h4 { font-size: 1rem; font-weight: 600; margin: 20px 0 8px; color: var(--text-muted); }
+    p { margin-bottom: 12px; color: #334155; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+    thead { background: #f8fafc; }
+    th {
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: #f8fafc; }
+
+    .endpoint-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+    .endpoint-card .method-url { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .method-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      letter-spacing: 0.03em;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+    .method-badge.get { background: var(--green-light); color: var(--green); }
+    .method-badge.post { background: var(--primary-light); color: var(--primary); }
+    .method-badge.patch { background: var(--amber-light); color: var(--amber); }
+    .method-badge.delete { background: var(--red-light); color: var(--red); }
+    .endpoint-url {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .endpoint-card .desc { color: var(--text-muted); font-size: 0.9rem; }
+
+    code, .code {
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      background: var(--code-bg);
+      border: 1px solid var(--code-border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 10px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+      font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+    pre .key { color: #7dd3fc; }
+    pre .str { color: #86efac; }
+    pre .comment { color: #64748b; font-style: italic; }
+    pre .num { color: #fbbf24; }
+
+    .enum-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .enum-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+    .enum-tag.blue { background: var(--primary-light); color: var(--primary); }
+    .enum-tag.green { background: var(--green-light); color: var(--green); }
+    .enum-tag.amber { background: var(--amber-light); color: var(--amber); }
+    .enum-tag.red { background: var(--red-light); color: var(--red); }
+    .enum-tag.purple { background: var(--purple-light); color: var(--purple); }
+
+    .flow-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+      margin: 16px 0 20px;
+      text-align: center;
+    }
+    .flow-steps {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+    }
+    .flow-step {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+    .flow-arrow { font-size: 1.3rem; color: var(--text-muted); padding: 0 8px; }
+    .flow-step.new { background: var(--primary-light); color: var(--primary); }
+    .flow-step.progress { background: var(--amber-light); color: var(--amber); }
+    .flow-step.pending { background: var(--purple-light); color: var(--purple); }
+    .flow-step.closed { background: var(--green-light); color: var(--green); }
+
+    .note-box {
+      background: var(--amber-light);
+      border-left: 4px solid var(--amber);
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    .note-box strong { color: var(--amber); }
+
+    .info-box {
+      background: var(--primary-light);
+      border-left: 4px solid var(--primary);
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    .info-box strong { color: var(--primary); }
+
+    .gap-box {
+      background: var(--red-light);
+      border-left: 4px solid var(--red);
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+      font-size: 0.9rem;
+    }
+    .gap-box strong { color: var(--red); }
+
+    @media (max-width: 768px) {
+      .page-header { padding: 32px 20px; }
+      .page-header h1 { font-size: 1.5rem; }
+      .container { padding: 20px 16px 60px; }
+      table { font-size: 0.8rem; }
+      th, td { padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>Tally CRM &mdash; Cases API &amp; Data Reference</h1>
+  <p>Complete reference for the Cases data model, API endpoints, status workflow, and related entities. Use this to integrate external systems.</p>
+  <div class="meta">
+    <span>Stack: Next.js 16 &middot; Prisma &middot; SQLite</span>
+    <span>Generated: 3 Mar 2026</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Table of Contents -->
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#endpoints">API Endpoints</a></li>
+      <li><a href="#case-fields">Case Fields (Full Schema)</a></li>
+      <li><a href="#enums">Enum Values &amp; Allowed Strings</a></li>
+      <li><a href="#status-workflow">Status &amp; Progress Workflow</a></li>
+      <li><a href="#case-number">Case Number Format</a></li>
+      <li><a href="#embedded-objects">Embedded Sub-Objects (Communication, Activity, Attachment)</a></li>
+      <li><a href="#request-examples">Request &amp; Response Examples</a></li>
+      <li><a href="#accounts">Account Data Shape</a></li>
+      <li><a href="#contacts">Contact Data Shape</a></li>
+      <li><a href="#orgs">Organization Data Shape</a></li>
+      <li><a href="#gaps">Current Gaps &amp; Integration Notes</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1. API Endpoints -->
+  <section id="endpoints">
+    <h2 class="section-title">1. API Endpoints</h2>
+    <p>All case endpoints are served from the Next.js API under <code>/api/cases</code>.</p>
+
+    <div class="endpoint-card">
+      <div class="method-url">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-url">/api/cases</span>
+      </div>
+      <div class="desc">List all cases. Optional query param <code>?caseNumber=X</code> to filter by case number.</div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="method-url">
+        <span class="method-badge post">POST</span>
+        <span class="endpoint-url">/api/cases</span>
+      </div>
+      <div class="desc">Create a new case. Body: full <code>CaseItem</code> JSON (see fields below). Returns the created case.</div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="method-url">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-url">/api/cases/[id]</span>
+      </div>
+      <div class="desc">Fetch a single case by its <code>id</code> (CUID).</div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="method-url">
+        <span class="method-badge patch">PATCH</span>
+        <span class="endpoint-url">/api/cases/[id]</span>
+      </div>
+      <div class="desc">Update a case. Body: partial <code>CaseItem</code> &mdash; only include the fields you want to change. Returns the full updated case.</div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="method-url">
+        <span class="method-badge delete">DELETE</span>
+        <span class="endpoint-url">/api/cases/[id]</span>
+      </div>
+      <div class="desc">Delete a case by <code>id</code>.</div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="method-url">
+        <span class="method-badge post">POST</span>
+        <span class="endpoint-url">/api/cases/[id]/attachments</span>
+      </div>
+      <div class="desc">Upload file(s). Body: <code>FormData</code> with a <code>files</code> field. Returns <code>Attachment[]</code> metadata. <strong>Note:</strong> this does not update the case record &mdash; the client must then <code>PATCH</code> the case with the updated attachments array.</div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="method-url">
+        <span class="method-badge get">GET</span>
+        <span class="endpoint-url">/api/cases/[id]/attachments/[attachmentId]</span>
+      </div>
+      <div class="desc">Download or view an attachment. Query param <code>?inline=true</code> for inline display (e.g. PDF preview).</div>
+    </div>
+  </section>
+
+  <!-- 2. Case Fields -->
+  <section id="case-fields">
+    <h2 class="section-title">2. Case Fields (Full Schema)</h2>
+    <p>The <code>Case</code> Prisma model. JSON columns are serialised/deserialised automatically by the API layer.</p>
+
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>string</td><td>Auto</td><td>CUID, generated by the server on create</td></tr>
+        <tr><td><code>caseNumber</code></td><td>string</td><td>Yes</td><td>Unique. Format: <code>PREFIX-YYYY-NNNNNN</code></td></tr>
+        <tr><td><code>accountId</code></td><td>string</td><td>Yes</td><td>Plain string reference to account (no FK constraint)</td></tr>
+        <tr><td><code>accountName</code></td><td>string</td><td>Yes</td><td>Denormalised account display name</td></tr>
+        <tr><td><code>type</code></td><td>CaseType</td><td>Yes</td><td>See enums section</td></tr>
+        <tr><td><code>subType</code></td><td>string</td><td>Yes</td><td>Reason / sub-category, e.g. "Billing Dispute"</td></tr>
+        <tr><td><code>status</code></td><td>CaseStatus</td><td>Yes</td><td>See enums &amp; workflow section</td></tr>
+        <tr><td><code>priority</code></td><td>CasePriority</td><td>Yes</td><td>See enums section</td></tr>
+        <tr><td><code>slaStatus</code></td><td>SLAStatus</td><td>Yes</td><td>See enums section</td></tr>
+        <tr><td><code>slaDeadline</code></td><td>string</td><td>Yes</td><td>Can be empty string</td></tr>
+        <tr><td><code>slaTimeRemaining</code></td><td>string</td><td>Yes</td><td>e.g. "4d 0h"</td></tr>
+        <tr><td><code>owner</code></td><td>string</td><td>Yes</td><td>Assigned user's name</td></tr>
+        <tr><td><code>team</code></td><td>string</td><td>Yes</td><td>e.g. "Large Market Support"</td></tr>
+        <tr><td><code>createdDate</code></td><td>string</td><td>Yes</td><td>DD/MM/YYYY (en-AU locale)</td></tr>
+        <tr><td><code>updatedDate</code></td><td>string</td><td>Yes</td><td>DD/MM/YYYY (en-AU locale)</td></tr>
+        <tr><td><code>description</code></td><td>string</td><td>Yes</td><td>Case description (can be empty)</td></tr>
+        <tr><td><code>resolution</code></td><td>string</td><td>Yes</td><td>Empty until case is resolved/closed</td></tr>
+        <tr><td><code>communications</code></td><td>JSON&nbsp;array</td><td>Optional</td><td>Array of Communication objects</td></tr>
+        <tr><td><code>activities</code></td><td>JSON&nbsp;array</td><td>Optional</td><td>Array of Activity objects</td></tr>
+        <tr><td><code>attachments</code></td><td>JSON&nbsp;array</td><td>Optional</td><td>Array of Attachment objects</td></tr>
+        <tr><td><code>relatedCases</code></td><td>JSON&nbsp;array</td><td>Optional</td><td>Array of related case number strings</td></tr>
+        <tr><td><code>parentCaseId</code></td><td>string</td><td>Optional</td><td>ID of parent case (for child cases)</td></tr>
+        <tr><td><code>parentCaseNumber</code></td><td>string</td><td>Optional</td><td>Case number of parent (display convenience)</td></tr>
+        <tr><td><code>childCaseIds</code></td><td>JSON&nbsp;array</td><td>Optional</td><td>Array of child case IDs</td></tr>
+        <tr><td><code>pendingReason</code></td><td>string</td><td>Optional</td><td>"Customer" | "3rd Party" | "On Hold" &mdash; only when status is Pending</td></tr>
+        <tr><td><code>descriptionHistory</code></td><td>JSON&nbsp;array</td><td>Optional</td><td>Array of <code>{ description, updatedAt }</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 3. Enums -->
+  <section id="enums">
+    <h2 class="section-title">3. Enum Values &amp; Allowed Strings</h2>
+
+    <h3>CaseType</h3>
+    <div class="enum-list">
+      <span class="enum-tag blue">Complaint</span>
+      <span class="enum-tag blue">Enquiry</span>
+      <span class="enum-tag blue">EWR</span>
+      <span class="enum-tag blue">Onboarding</span>
+      <span class="enum-tag blue">Dunning</span>
+    </div>
+
+    <h3>CaseStatus</h3>
+    <div class="enum-list">
+      <span class="enum-tag blue">New</span>
+      <span class="enum-tag amber">In Progress</span>
+      <span class="enum-tag purple">Pending</span>
+      <span class="enum-tag green">Resolved</span>
+      <span class="enum-tag green">Closed</span>
+    </div>
+
+    <h3>CasePriority</h3>
+    <div class="enum-list">
+      <span class="enum-tag red">Critical</span>
+      <span class="enum-tag amber">High</span>
+      <span class="enum-tag blue">Medium</span>
+      <span class="enum-tag green">Low</span>
+    </div>
+
+    <h3>SLAStatus</h3>
+    <div class="enum-list">
+      <span class="enum-tag green">On Track</span>
+      <span class="enum-tag amber">At Risk</span>
+      <span class="enum-tag red">Breached</span>
+    </div>
+
+    <h3>PendingReason (when status = "Pending")</h3>
+    <div class="enum-list">
+      <span class="enum-tag purple">Customer</span>
+      <span class="enum-tag purple">3rd Party</span>
+      <span class="enum-tag purple">On Hold</span>
+    </div>
+
+    <h3>Communication Type</h3>
+    <div class="enum-list">
+      <span class="enum-tag blue">Email</span>
+      <span class="enum-tag blue">Phone</span>
+      <span class="enum-tag blue">Note</span>
+      <span class="enum-tag blue">System</span>
+    </div>
+
+    <h3>Communication Direction</h3>
+    <div class="enum-list">
+      <span class="enum-tag blue">Inbound</span>
+      <span class="enum-tag blue">Outbound</span>
+      <span class="enum-tag blue">Internal</span>
+    </div>
+
+    <h3>Activity Type</h3>
+    <div class="enum-list">
+      <span class="enum-tag blue">Status Change</span>
+      <span class="enum-tag blue">Assignment</span>
+      <span class="enum-tag blue">Comment</span>
+      <span class="enum-tag blue">Attachment</span>
+      <span class="enum-tag blue">SLA Update</span>
+      <span class="enum-tag blue">Created</span>
+      <span class="enum-tag blue">Email Sent</span>
+      <span class="enum-tag blue">Email Received</span>
+      <span class="enum-tag blue">Note Added</span>
+      <span class="enum-tag blue">Call Logged</span>
+    </div>
+  </section>
+
+  <!-- 4. Status Workflow -->
+  <section id="status-workflow">
+    <h2 class="section-title">4. Status &amp; Progress Workflow</h2>
+    <p>The UI progress bar shows this linear flow:</p>
+
+    <div class="flow-diagram">
+      <div class="flow-steps">
+        <div class="flow-step new">New</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step progress">In Progress</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step pending">Pending</div>
+        <div class="flow-arrow">&rarr;</div>
+        <div class="flow-step closed">Closed</div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>No enforced state machine:</strong> The API does not enforce status transitions. Any status can be set to any other status via <code>PATCH</code>. The UI guides users through the flow above, but the API accepts any valid CaseStatus value.
+    </div>
+
+    <h3>Transition Details</h3>
+    <table>
+      <thead>
+        <tr><th>Transition</th><th>How It Happens</th><th>Extra Data</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>New &rarr; In Progress</td><td>Status bar click, Kanban drag, or PATCH</td><td>None</td></tr>
+        <tr><td>Any &rarr; Pending</td><td>Status bar click, Kanban drag, or PATCH</td><td><code>pendingReason</code>: "Customer" | "3rd Party" | "On Hold"</td></tr>
+        <tr><td>Any &rarr; Closed</td><td>Close Case modal or PATCH</td><td><code>resolution</code> string + close reason</td></tr>
+        <tr><td>Any &rarr; Resolved</td><td>PATCH</td><td><code>resolution</code> string</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Updating Status via API</h3>
+    <pre><span class="comment">// Minimal PATCH to move a case to "In Progress"</span>
+PATCH /api/cases/{id}
+Content-Type: application/json
+
+{
+  <span class="key">"status"</span>: <span class="str">"In Progress"</span>
+}
+
+<span class="comment">// Move to "Pending" with reason</span>
+{
+  <span class="key">"status"</span>: <span class="str">"Pending"</span>,
+  <span class="key">"pendingReason"</span>: <span class="str">"Customer"</span>
+}
+
+<span class="comment">// Close a case</span>
+{
+  <span class="key">"status"</span>: <span class="str">"Closed"</span>,
+  <span class="key">"resolution"</span>: <span class="str">"Issue resolved after billing adjustment applied."</span>
+}</pre>
+  </section>
+
+  <!-- 5. Case Number -->
+  <section id="case-number">
+    <h2 class="section-title">5. Case Number Format</h2>
+
+    <p>Case numbers follow the pattern: <code>PREFIX-YYYY-NNNNNN</code></p>
+
+    <table>
+      <thead>
+        <tr><th>Part</th><th>Description</th><th>Example</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>PREFIX</code></td><td>Derived from account name: first letter of each word (up to 4 chars), or first 4 chars for single-word names. Uppercase.</td><td>"Big Box Mega Corp" &rarr; <code>BBMC</code></td></tr>
+        <tr><td><code>YYYY</code></td><td>Four-digit year</td><td><code>2026</code></td></tr>
+        <tr><td><code>NNNNNN</code></td><td>Six-digit zero-padded sequence number</td><td><code>001847</code></td></tr>
+      </tbody>
+    </table>
+
+    <p><strong>Full example:</strong> <code>BBMC-2026-001847</code></p>
+
+    <div class="note-box">
+      <strong>Important:</strong> Case numbers must be unique. If integrating from an external system, coordinate numbering with the CRM to avoid collisions. The generation logic lives in <code>lib/case-number.ts</code> &mdash; function <code>generateCaseNumber(accountName, sequence, year?)</code>.
+    </div>
+  </section>
+
+  <!-- 6. Embedded Sub-Objects -->
+  <section id="embedded-objects">
+    <h2 class="section-title">6. Embedded Sub-Objects</h2>
+    <p>These are stored as JSON strings on the Case record and parsed by the API layer. When updating, you send the full array.</p>
+
+    <h3>Communication</h3>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>string</td><td>Yes</td><td>Unique ID</td></tr>
+        <tr><td><code>type</code></td><td>string</td><td>Yes</td><td>"Email" | "Phone" | "Note" | "System"</td></tr>
+        <tr><td><code>direction</code></td><td>string</td><td>Yes</td><td>"Inbound" | "Outbound" | "Internal"</td></tr>
+        <tr><td><code>from</code></td><td>string</td><td>Yes</td><td>Sender name/address</td></tr>
+        <tr><td><code>to</code></td><td>string</td><td>Yes</td><td>Recipient name/address</td></tr>
+        <tr><td><code>subject</code></td><td>string</td><td>Yes</td><td>Subject line</td></tr>
+        <tr><td><code>body</code></td><td>string</td><td>Yes</td><td>Full message body</td></tr>
+        <tr><td><code>timestamp</code></td><td>string</td><td>Yes</td><td>ISO or locale string</td></tr>
+        <tr><td><code>attachments</code></td><td>Attachment[]</td><td>Yes</td><td>Inline attachments</td></tr>
+        <tr><td><code>loggedBy</code></td><td>string</td><td>Optional</td><td>Who logged this communication</td></tr>
+        <tr><td><code>threadId</code></td><td>string</td><td>Optional</td><td>For grouping email threads</td></tr>
+        <tr><td><code>sourceCaseId</code></td><td>string</td><td>Optional</td><td>If forwarded from another case</td></tr>
+        <tr><td><code>sourceCaseNumber</code></td><td>string</td><td>Optional</td><td>Source case number</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Activity</h3>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>string</td><td>Yes</td><td>Unique ID</td></tr>
+        <tr><td><code>type</code></td><td>string</td><td>Yes</td><td>See Activity Type enums above</td></tr>
+        <tr><td><code>description</code></td><td>string</td><td>Yes</td><td>Human-readable description</td></tr>
+        <tr><td><code>user</code></td><td>string</td><td>Yes</td><td>User who performed the action</td></tr>
+        <tr><td><code>timestamp</code></td><td>string</td><td>Yes</td><td>ISO or locale string</td></tr>
+        <tr><td><code>metadata</code></td><td>Record&lt;string,&nbsp;string&gt;</td><td>Optional</td><td>Arbitrary key-value pairs</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Attachment</h3>
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>string</td><td>Yes</td><td>Unique ID</td></tr>
+        <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>File name</td></tr>
+        <tr><td><code>type</code></td><td>string</td><td>Yes</td><td>File type / extension</td></tr>
+        <tr><td><code>size</code></td><td>string</td><td>Yes</td><td>Human-readable size, e.g. "2.4 MB"</td></tr>
+        <tr><td><code>uploadedBy</code></td><td>string</td><td>Yes</td><td>User who uploaded</td></tr>
+        <tr><td><code>uploadedDate</code></td><td>string</td><td>Yes</td><td>Upload date string</td></tr>
+        <tr><td><code>storagePath</code></td><td>string</td><td>Optional</td><td>Server-side file path</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 7. Request & Response Examples -->
+  <section id="request-examples">
+    <h2 class="section-title">7. Request &amp; Response Examples</h2>
+
+    <h3>Create a Case &mdash; <code>POST /api/cases</code></h3>
+    <pre>{
+  <span class="key">"caseNumber"</span>: <span class="str">"BBMC-2026-001847"</span>,
+  <span class="key">"accountId"</span>: <span class="str">"acc-001"</span>,
+  <span class="key">"accountName"</span>: <span class="str">"Big Box Mega Corp"</span>,
+  <span class="key">"type"</span>: <span class="str">"Complaint"</span>,
+  <span class="key">"subType"</span>: <span class="str">"Billing Dispute"</span>,
+  <span class="key">"status"</span>: <span class="str">"New"</span>,
+  <span class="key">"priority"</span>: <span class="str">"High"</span>,
+  <span class="key">"slaStatus"</span>: <span class="str">"On Track"</span>,
+  <span class="key">"slaDeadline"</span>: <span class="str">""</span>,
+  <span class="key">"slaTimeRemaining"</span>: <span class="str">"4d 0h"</span>,
+  <span class="key">"owner"</span>: <span class="str">"John Smith"</span>,
+  <span class="key">"team"</span>: <span class="str">"Large Market Support"</span>,
+  <span class="key">"createdDate"</span>: <span class="str">"03/03/2026"</span>,
+  <span class="key">"updatedDate"</span>: <span class="str">"03/03/2026"</span>,
+  <span class="key">"description"</span>: <span class="str">"Customer disputes last invoice amount."</span>,
+  <span class="key">"resolution"</span>: <span class="str">""</span>,
+  <span class="key">"communications"</span>: [],
+  <span class="key">"activities"</span>: [],
+  <span class="key">"attachments"</span>: [],
+  <span class="key">"relatedCases"</span>: []
+}</pre>
+
+    <h3>Update Case Status &mdash; <code>PATCH /api/cases/{id}</code></h3>
+    <pre><span class="comment">// Only send the fields you want to change</span>
+{
+  <span class="key">"status"</span>: <span class="str">"In Progress"</span>,
+  <span class="key">"updatedDate"</span>: <span class="str">"03/03/2026"</span>
+}</pre>
+
+    <h3>Add a Communication &mdash; <code>PATCH /api/cases/{id}</code></h3>
+    <pre><span class="comment">// Fetch the case first, append to communications[], then PATCH</span>
+{
+  <span class="key">"communications"</span>: [
+    <span class="comment">// ... existing communications ...,</span>
+    {
+      <span class="key">"id"</span>: <span class="str">"comm-new-001"</span>,
+      <span class="key">"type"</span>: <span class="str">"Note"</span>,
+      <span class="key">"direction"</span>: <span class="str">"Internal"</span>,
+      <span class="key">"from"</span>: <span class="str">"John Smith"</span>,
+      <span class="key">"to"</span>: <span class="str">""</span>,
+      <span class="key">"subject"</span>: <span class="str">"Follow-up note"</span>,
+      <span class="key">"body"</span>: <span class="str">"Contacted customer, awaiting documentation."</span>,
+      <span class="key">"timestamp"</span>: <span class="str">"2026-03-03T14:30:00.000Z"</span>,
+      <span class="key">"attachments"</span>: [],
+      <span class="key">"loggedBy"</span>: <span class="str">"John Smith"</span>
+    }
+  ],
+  <span class="key">"activities"</span>: [
+    <span class="comment">// ... existing activities ...,</span>
+    {
+      <span class="key">"id"</span>: <span class="str">"act-new-001"</span>,
+      <span class="key">"type"</span>: <span class="str">"Note Added"</span>,
+      <span class="key">"description"</span>: <span class="str">"Note added by John Smith"</span>,
+      <span class="key">"user"</span>: <span class="str">"John Smith"</span>,
+      <span class="key">"timestamp"</span>: <span class="str">"2026-03-03T14:30:00.000Z"</span>
+    }
+  ]
+}</pre>
+
+    <h3>Response Shape (all GET &amp; successful mutations)</h3>
+    <pre><span class="comment">// Returns full CaseItem with all fields populated</span>
+{
+  <span class="key">"id"</span>: <span class="str">"clx1abc2d0000..."</span>,   <span class="comment">// server-generated CUID</span>
+  <span class="key">"caseNumber"</span>: <span class="str">"BBMC-2026-001847"</span>,
+  <span class="key">"accountId"</span>: <span class="str">"acc-001"</span>,
+  <span class="key">"accountName"</span>: <span class="str">"Big Box Mega Corp"</span>,
+  <span class="key">"type"</span>: <span class="str">"Complaint"</span>,
+  <span class="key">"subType"</span>: <span class="str">"Billing Dispute"</span>,
+  <span class="key">"status"</span>: <span class="str">"New"</span>,
+  <span class="key">"priority"</span>: <span class="str">"High"</span>,
+  <span class="comment">// ... all other fields ...</span>
+  <span class="key">"communications"</span>: [],
+  <span class="key">"activities"</span>: [],
+  <span class="key">"attachments"</span>: []
+}</pre>
+  </section>
+
+  <!-- 8. Account -->
+  <section id="accounts">
+    <h2 class="section-title">8. Account Data Shape</h2>
+    <div class="gap-box">
+      <strong>Not in database:</strong> Accounts currently exist only as TypeScript types and mock data. There are no API routes or Prisma models for accounts. Cases reference accounts only by <code>accountId</code> and <code>accountName</code> strings.
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>string</td><td>Yes</td><td>e.g. "acc-001"</td></tr>
+        <tr><td><code>orgId</code></td><td>string</td><td>Yes</td><td>Links to Organization</td></tr>
+        <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>Account display name</td></tr>
+        <tr><td><code>accountNumber</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>type</code></td><td>AccountType</td><td>Yes</td><td>Account classification</td></tr>
+        <tr><td><code>status</code></td><td>string</td><td>Yes</td><td>"Active" | "Suspended" | "Closed"</td></tr>
+        <tr><td><code>sites</code></td><td>Site[]</td><td>Yes</td><td>Physical sites / locations</td></tr>
+        <tr><td><code>nmis</code></td><td>string[]</td><td>Yes</td><td>NMI identifiers</td></tr>
+        <tr><td><code>energyType</code></td><td>EnergyType</td><td>Yes</td><td>Energy type classification</td></tr>
+        <tr><td><code>primaryContact</code></td><td>Contact</td><td>Yes</td><td>Main contact object</td></tr>
+        <tr><td><code>contacts</code></td><td>Contact[]</td><td>Yes</td><td>All contacts on the account</td></tr>
+        <tr><td><code>address</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>annualConsumption</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>accountBalance</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>lastPaymentDate</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>lastPaymentAmount</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>contractEndDate</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>linkedAccountIds</code></td><td>string[]</td><td>Optional</td><td>Related account IDs</td></tr>
+        <tr><td><code>legalBusinessName</code></td><td>string</td><td>Optional</td><td></td></tr>
+        <tr><td><code>parentAccountId</code></td><td>string</td><td>Optional</td><td>For account hierarchy</td></tr>
+        <tr><td><code>parentAccountName</code></td><td>string</td><td>Optional</td><td></td></tr>
+        <tr><td><code>customerType</code></td><td>string</td><td>Optional</td><td></td></tr>
+        <tr><td><code>isDirectDebit</code></td><td>boolean</td><td>Optional</td><td></td></tr>
+        <tr><td><code>lifeSupport</code></td><td>boolean</td><td>Optional</td><td></td></tr>
+        <tr><td><code>serviceReferenceNumber</code></td><td>string</td><td>Optional</td><td></td></tr>
+        <tr><td><code>terms</code></td><td>string</td><td>Optional</td><td></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 9. Contact -->
+  <section id="contacts">
+    <h2 class="section-title">9. Contact Data Shape</h2>
+    <div class="gap-box">
+      <strong>Not in database:</strong> Contacts are embedded within Account objects in mock data. They are not stored on Case records and have no dedicated API routes.
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>name</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>role</code></td><td>string</td><td>Yes</td><td>Job title / role</td></tr>
+        <tr><td><code>email</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>phone</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>isPrimary</code></td><td>boolean</td><td>Yes</td><td>Whether this is the primary contact</td></tr>
+        <tr><td><code>createDate</code></td><td>string</td><td>Optional</td><td></td></tr>
+        <tr><td><code>preferredChannels</code></td><td>string[]</td><td>Optional</td><td>e.g. ["Email", "Phone"]</td></tr>
+        <tr><td><code>favoriteContentTopics</code></td><td>string[]</td><td>Optional</td><td></td></tr>
+        <tr><td><code>leadStatus</code></td><td>string</td><td>Optional</td><td></td></tr>
+        <tr><td><code>lifecycleStage</code></td><td>string</td><td>Optional</td><td></td></tr>
+        <tr><td><code>lastActivityDate</code></td><td>string</td><td>Optional</td><td></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 10. Organization -->
+  <section id="orgs">
+    <h2 class="section-title">10. Organization Data Shape</h2>
+    <div class="gap-box">
+      <strong>Not in database:</strong> Organizations exist only as TypeScript types and mock data. No API routes or Prisma models.
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Field</th><th>Type</th><th>Required</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>string</td><td>Yes</td><td></td></tr>
+        <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>Organization name</td></tr>
+        <tr><td><code>type</code></td><td>OrgType</td><td>Optional</td><td>Organization classification</td></tr>
+        <tr><td><code>address</code></td><td>string</td><td>Optional</td><td></td></tr>
+        <tr><td><code>abnAcn</code></td><td>string</td><td>Optional</td><td>ABN / ACN number</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Entity Relationships</h3>
+    <div class="flow-diagram">
+      <div class="flow-steps">
+        <div class="flow-step new">Organization</div>
+        <div class="flow-arrow">1 &rarr; N</div>
+        <div class="flow-step progress">Account</div>
+        <div class="flow-arrow">1 &rarr; N</div>
+        <div class="flow-step pending">Contact</div>
+      </div>
+    </div>
+    <div class="flow-diagram">
+      <div class="flow-steps">
+        <div class="flow-step progress">Account</div>
+        <div class="flow-arrow">1 &rarr; N</div>
+        <div class="flow-step closed">Case</div>
+      </div>
+    </div>
+    <p>A Case stores <code>accountId</code> + <code>accountName</code> as denormalised strings. There is no foreign key constraint.</p>
+  </section>
+
+  <!-- 11. Gaps -->
+  <section id="gaps">
+    <h2 class="section-title">11. Current Gaps &amp; Integration Notes</h2>
+
+    <div class="gap-box">
+      <strong>No Account/Contact/Org API:</strong> These entities have no database tables or CRUD endpoints. To push this data from an external system, you would need to either:
+      <ol style="margin-top:8px;padding-left:20px;">
+        <li>Add Prisma models and API routes for Account, Contact, and Organization</li>
+        <li>Or continue denormalising &mdash; just pass <code>accountId</code> and <code>accountName</code> when creating cases</li>
+      </ol>
+    </div>
+
+    <div class="note-box">
+      <strong>Communications &amp; Activities are append-only arrays:</strong> To add a new note/email/activity, you must GET the case, append to the array, then PATCH the entire array back. There is no dedicated "add communication" endpoint.
+    </div>
+
+    <div class="note-box">
+      <strong>Attachment upload is two-step:</strong> First POST the file to <code>/api/cases/[id]/attachments</code>, then PATCH the case with the returned attachment metadata merged into the attachments array.
+    </div>
+
+    <div class="info-box">
+      <strong>No authentication:</strong> The API currently has no auth layer. All endpoints are open. Factor this in when planning external integration.
+    </div>
+
+    <div class="info-box">
+      <strong>Database fallback:</strong> If <code>DATABASE_URL</code> is not set, the API returns <code>503</code> and the app falls back to in-memory mock data. Ensure the database is configured for production use.
+    </div>
+
+    <h3>Key Source Files</h3>
+    <table>
+      <thead>
+        <tr><th>File</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>prisma/schema.prisma</code></td><td>Database schema (Case model)</td></tr>
+        <tr><td><code>types/crm.ts</code></td><td>All TypeScript interfaces (CaseItem, Account, Contact, Org, Communication, Activity, Attachment)</td></tr>
+        <tr><td><code>lib/db.ts</code></td><td>Prisma client, conversion functions between DB rows and CaseItem</td></tr>
+        <tr><td><code>lib/case-number.ts</code></td><td>Case number generation logic</td></tr>
+        <tr><td><code>app/api/cases/route.ts</code></td><td>GET (list) &amp; POST (create) endpoints</td></tr>
+        <tr><td><code>app/api/cases/[id]/route.ts</code></td><td>GET, PATCH, DELETE single case</td></tr>
+        <tr><td><code>lib/mock-data/accounts.ts</code></td><td>Mock account/contact/org data and lookup functions</td></tr>
+        <tr><td><code>lib/mock-data/cases.ts</code></td><td>Mock case data</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+</div>
+
+</body>
+</html>
