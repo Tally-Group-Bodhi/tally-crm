@@ -33,6 +33,16 @@ const originIcons: Record<(typeof CASE_ORIGINS)[number], string> = {
 const OWNER_OPTIONS = ["John Smith", "Daniel Cooper", "Unassigned"];
 /** Default to logged-in user; in this app that's John Smith (could come from auth/session later) */
 const DEFAULT_OWNER = "John Smith";
+
+/** SLA policy options for New Case (aligned with Settings > SLA Policies). */
+const SLA_OPTIONS = [
+  "Complaint — Resolution",
+  "Complaint — Acknowledgement",
+  "Life Support — Acknowledgement",
+  "General Enquiry — Resolution",
+  "EWR — Initial Response",
+  "General Enquiry — Acknowledgement",
+];
 const CASE_STATUSES: CaseStatus[] = ["New", "In Progress", "Pending", "Resolved", "Closed"];
 
 const statusColors: Record<CaseStatus, string> = {
@@ -104,13 +114,13 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
   const [contactName, setContactName] = React.useState("");
   const [contactId, setContactId] = React.useState("");
   const [accountId, setAccountId] = React.useState("");
-  const [siteId, setSiteId] = React.useState("");
   const [webEmail, setWebEmail] = React.useState("");
   const [status, setStatus] = React.useState<CaseStatus>("New");
   const [caseOrigin, setCaseOrigin] = React.useState("");
   const [caseGroup, setCaseGroup] = React.useState("");
   const [caseType, setCaseType] = React.useState("");
   const [priority, setPriority] = React.useState<CasePriority>("Medium");
+  const [slaPolicy, setSlaPolicy] = React.useState("");
   const [subject, setSubject] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [owner, setOwner] = React.useState(DEFAULT_OWNER);
@@ -150,18 +160,11 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
 
   const selectedAccount = mockAccounts.find((a) => a.id === accountId);
 
-  const availableSites = React.useMemo(
-    () => selectedAccount?.sites ?? [],
-    [selectedAccount]
-  );
-  const [siteDropdownOpen, setSiteDropdownOpen] = React.useState(false);
-  const siteDropdownRef = React.useRef<HTMLDivElement>(null);
-
   const availableContacts = React.useMemo(() => {
-    if (!accountId || !siteId) return [];
+    if (!accountId) return [];
     const acc = mockAccounts.find((a) => a.id === accountId);
     return acc?.contacts ?? [];
-  }, [accountId, siteId]);
+  }, [accountId]);
 
   const recentCasesForOrg = React.useMemo(() => {
     if (!orgId || allCases.length === 0) return [];
@@ -199,12 +202,6 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
         !accountContainerRef.current.contains(e.target as Node)
       ) {
         setAccountDropdownOpen(false);
-      }
-      if (
-        siteDropdownRef.current &&
-        !siteDropdownRef.current.contains(e.target as Node)
-      ) {
-        setSiteDropdownOpen(false);
       }
       if (
         contactDropdownRef.current &&
@@ -248,7 +245,6 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
     setContactId("");
     setAccountId("");
     setOrgId("");
-    setSiteId("");
     setAccountSearch("");
     setOrgSearch("");
     setWebEmail("");
@@ -257,6 +253,7 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
     setCaseGroup("");
     setCaseType("");
     setPriority("Medium");
+    setSlaPolicy("");
     setSubject("");
     setDescription("");
     setOwner(DEFAULT_OWNER);
@@ -282,6 +279,7 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
       slaStatus: "On Track",
       slaDeadline: "",
       slaTimeRemaining: "4d 0h",
+      ...(slaPolicy && { slaPolicy }),
       owner,
       team: "Large Market Support",
       createdDate: dateStr,
@@ -430,7 +428,6 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
                             setOrgSearch("");
                             setAccountId("");
                             setAccountSearch("");
-                            setSiteId("");
                             setContactId("");
                             setContactName("");
                             setWebEmail("");
@@ -495,7 +492,6 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
                             setAccountSearch("");
                             setOrgId(a.orgId);
                             setOrgSearch("");
-                            setSiteId("");
                             setContactId("");
                             setContactName("");
                             setWebEmail("");
@@ -507,50 +503,6 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
                             <p className="font-medium text-gray-900 dark:text-gray-100">{a.name}</p>
                             <p className="text-xs text-muted-foreground">{a.accountNumber}</p>
                           </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="relative space-y-1.5" ref={siteDropdownRef}>
-                <label className={formLabel}>Site</label>
-                <div className="relative">
-                  <button
-                    type="button"
-                    className={cn(formInput, "flex items-center justify-between text-left cursor-pointer")}
-                    style={{ fontSize: "var(--tally-font-size-sm)" }}
-                    onClick={() => setSiteDropdownOpen((o) => !o)}
-                  >
-                    <span className={!siteId ? "text-muted-foreground" : ""}>
-                      {siteId ? availableSites.find((s) => s.id === siteId)?.name ?? siteId : "Select site"}
-                    </span>
-                    <Icon name="expand_more" size={16} className="text-muted-foreground shrink-0" />
-                  </button>
-                </div>
-                {siteDropdownOpen && (
-                  <div className="absolute left-0 top-full z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-border bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
-                    {availableSites.length === 0 ? (
-                      <div className="px-3 py-2 text-sm text-muted-foreground">
-                        {accountId ? "No sites for this account" : "Select an account first"}
-                      </div>
-                    ) : (
-                      availableSites.map((s) => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
-                          onClick={() => {
-                            setSiteId(s.id);
-                            setContactId("");
-                            setContactName("");
-                            setWebEmail("");
-                            setSiteDropdownOpen(false);
-                          }}
-                        >
-                          <Icon name="place" size={14} className="text-muted-foreground" />
-                          <span className="font-medium text-gray-900 dark:text-gray-100">{s.name}</span>
                         </button>
                       ))
                     )}
@@ -577,7 +529,7 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
                   <div className="absolute left-0 top-full z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-border bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
                     {availableContacts.length === 0 ? (
                       <div className="px-3 py-2 text-sm text-muted-foreground">
-                        {accountId && siteId ? "No contacts for this account" : "Select an account and site first"}
+                        {accountId ? "No contacts for this account" : "Select an account first"}
                       </div>
                     ) : (
                       availableContacts.map((c) => (
@@ -623,7 +575,7 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
                   <div className="absolute left-0 top-full z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-border bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
                     {availableContacts.length === 0 ? (
                       <div className="px-3 py-2 text-sm text-muted-foreground">
-                        {accountId && siteId ? "No contacts for this account" : "Select an account and site first"}
+                        {accountId ? "No contacts for this account" : "Select an account first"}
                       </div>
                     ) : (
                       availableContacts.map((c) => (
@@ -921,6 +873,30 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className={formLabel}>SLA</label>
+                <div className="relative">
+                  <select
+                    className={cn(formInput, "cursor-pointer appearance-none pr-9")}
+                    style={{ fontSize: "var(--tally-font-size-sm)" }}
+                    value={slaPolicy}
+                    onChange={(e) => setSlaPolicy(e.target.value)}
+                  >
+                    <option value="">--Select SLA--</option>
+                    {SLA_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                  <Icon
+                    name="expand_more"
+                    size={16}
+                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  />
                 </div>
               </div>
 

@@ -124,6 +124,8 @@ export interface CaseItem {
   slaStatus: SLAStatus;
   slaDeadline: string;
   slaTimeRemaining: string;
+  /** Selected SLA policy name (e.g. from Settings > SLA Policies) */
+  slaPolicy?: string;
   owner: string;
   team: string;
   createdDate: string;

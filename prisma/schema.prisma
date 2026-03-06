@@ -21,6 +21,7 @@ model Case {
   slaStatus        String   // SLAStatus: On Track | At Risk | Breached
   slaDeadline      String
   slaTimeRemaining String
+  slaPolicy        String?  // Selected SLA policy name (e.g. from Settings > SLA Policies)
   owner            String
   team             String
   createdDate      String

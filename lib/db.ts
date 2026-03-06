@@ -40,6 +40,7 @@ export function prismaCaseToCaseItem(row: {
   slaStatus: string;
   slaDeadline: string;
   slaTimeRemaining: string;
+  slaPolicy: string | null;
   owner: string;
   team: string;
   createdDate: string;
@@ -68,6 +69,7 @@ export function prismaCaseToCaseItem(row: {
     slaStatus: row.slaStatus as CaseItem["slaStatus"],
     slaDeadline: row.slaDeadline,
     slaTimeRemaining: row.slaTimeRemaining,
+    ...(row.slaPolicy && { slaPolicy: row.slaPolicy }),
     owner: row.owner,
     team: row.team,
     createdDate: row.createdDate,
@@ -99,6 +101,7 @@ export function caseItemToPrismaPayload(item: CaseItem) {
     slaStatus: item.slaStatus,
     slaDeadline: item.slaDeadline,
     slaTimeRemaining: item.slaTimeRemaining,
+    slaPolicy: item.slaPolicy ?? null,
     owner: item.owner,
     team: item.team,
     createdDate: item.createdDate,
