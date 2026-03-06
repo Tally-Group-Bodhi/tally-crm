@@ -133,28 +133,28 @@ export const CASE_GROUP_TO_TYPE: Record<string, CaseType> = {
   "Relationship / Account Management": "Enquiry",
 };
 
-/** Case Reason options (must match form dropdown) */
-export const CASE_REASON_OPTIONS = [
-  "Billing Dispute",
-  "Service Quality",
-  "Meter Issue",
-  "Rate Review",
-  "New Connection",
-  "Contract Amendment",
-  "Payment Issue",
-  "General Enquiry",
-  "Other",
-] as const;
+/** One type within a group (label only) */
+export interface CaseTypeInGroup {
+  label: string;
+}
 
-/** Map Case Group -> default Case Reason when user picks a type from that group */
-export const CASE_GROUP_TO_REASON: Record<string, string> = {
-  "Billing & Invoicing": "Billing Dispute",
-  "Metering & Data Issues": "Meter Issue",
-  "Move-In / Move-Out & Account Changes": "New Connection",
-  "Contract & Pricing": "Contract Amendment",
-  "Credit & Collections": "Payment Issue",
-  "Market & Compliance": "General Enquiry",
-  "Operational / Service Orders": "Service Quality",
-  "Complex Investigation / Root Cause": "Other",
-  "Relationship / Account Management": "General Enquiry",
-};
+/** Shape for editable case group (used by Case Classification context and Settings) */
+export interface CaseGroupItem {
+  id: string;
+  name: string;
+  types: CaseTypeInGroup[];
+  caseClass: CaseType;
+}
+
+/** Build initial case groups array from static CASE_TYPE_GROUPS / CASE_GROUP_TO_TYPE */
+export function getInitialCaseGroups(): CaseGroupItem[] {
+  return Object.keys(CASE_TYPE_GROUPS).map((name, index) => {
+    const labels = CASE_TYPE_GROUPS[name] ?? [];
+    return {
+      id: `cg-${index + 1}`,
+      name,
+      types: labels.map((label) => ({ label })),
+      caseClass: CASE_GROUP_TO_TYPE[name] ?? "Enquiry",
+    };
+  });
+}

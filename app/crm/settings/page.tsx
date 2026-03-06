@@ -7,6 +7,7 @@ import {
 } from "@/components/Card/Card";
 import Badge from "@/components/Badge/Badge";
 import Button from "@/components/Button/Button";
+import Checkbox from "@/components/Checkbox/Checkbox";
 import Input from "@/components/Input/Input";
 import Select from "@/components/Select/Select";
 import Switch from "@/components/Switch/Switch";
@@ -39,13 +40,17 @@ import {
   AlertDialogAction,
 } from "@/components/AlertDialog/AlertDialog";
 import { cn } from "@/lib/utils";
+import { useCaseClassification } from "@/lib/case-classification-context";
+import type { CaseGroupItem, CaseTypeInGroup } from "@/lib/mock-data/case-types";
+import type { CaseType } from "@/types/crm";
 
 const SETTINGS_TABS = [
   { key: "users", label: "Users", icon: "group" },
   { key: "roles", label: "Roles", icon: "admin_panel_settings" },
   { key: "permissions", label: "Permissions", icon: "lock" },
   { key: "opportunityStages", label: "Opportunity Stages", icon: "layers" },
-  { key: "caseTypes", label: "Case Types", icon: "sell" },
+  { key: "caseClasses", label: "Case Classes", icon: "sell" },
+  { key: "caseTypes", label: "Case Types", icon: "folder" },
   { key: "slaPolicies", label: "SLA Policies", icon: "timer" },
   { key: "businessHours", label: "Business Hours", icon: "work_history" },
   { key: "coolOffPeriod", label: "Cool Off Period", icon: "schedule" },
@@ -58,7 +63,7 @@ const SETTINGS_TABS = [
 
 const SETTINGS_CATEGORIES: { label: string; tabKeys: string[] }[] = [
   { label: "User & access", tabKeys: ["users", "roles", "permissions"] },
-  { label: "Cases", tabKeys: ["caseTypes", "slaPolicies", "businessHours", "coolOffPeriod"] },
+  { label: "Cases", tabKeys: ["caseClasses", "caseTypes", "slaPolicies", "businessHours", "coolOffPeriod"] },
   { label: "Sales pipeline", tabKeys: ["opportunityStages"] },
   { label: "Templates", tabKeys: ["templates", "noteTemplates"] },
   { label: "Channels", tabKeys: ["inboxes"] },
@@ -110,9 +115,27 @@ const SLA_RULES_DATA: SLARule[] = [
   { id: 7, name: "Billing Dispute — Resolution", caseType: "General Enquiry", reason: "Billing dispute", duration: "10 business days", warning: "75%", type: "internal", status: "inactive" },
 ];
 
-const CASE_TYPES = ["Complaint", "General Enquiry", "EWR", "Life Support", "Service Order"];
 const CONTACT_REASONS = ["All contact reasons", "Billing dispute", "Meter fault", "New connection", "Supply interruption", "Contract query"];
 const DURATION_UNITS = ["business days", "calendar days", "business hours"];
+
+/** Case type config (C-042: configurable; CS-045: optional primary contact reason per type) */
+interface CaseTypeItem {
+  id: string;
+  name: string;
+  primaryContactReason: string;
+  active: boolean;
+}
+
+const CASE_TYPES_INITIAL: CaseTypeItem[] = [
+  { id: "ct-1", name: "Complaint", primaryContactReason: "", active: true },
+  { id: "ct-2", name: "General Enquiry", primaryContactReason: "", active: true },
+  { id: "ct-3", name: "EWR", primaryContactReason: "", active: true },
+  { id: "ct-4", name: "Life Support", primaryContactReason: "", active: true },
+  { id: "ct-5", name: "Service Order", primaryContactReason: "", active: true },
+];
+
+/** Case class options for Case Group config (maps to API CaseType) */
+const CASE_CLASS_OPTIONS: CaseType[] = ["Enquiry", "Onboarding", "Complaint", "Dunning", "EWR"];
 const ESCALATE_OPTIONS = ["No escalation", "Team Leader", "Manager", "Compliance Officer"];
 
 interface NoteTemplateItem {
@@ -230,6 +253,7 @@ const defaultSLAForm = {
 };
 
 export default function SettingsPage() {
+  const caseClassification = useCaseClassification();
   const [activeTab, setActiveTab] = useState("users");
   const [slaRules, setSlaRules] = useState<SLARule[]>(SLA_RULES_DATA);
   const [slaFilterTab, setSlaFilterTab] = useState<"all" | "regulatory" | "internal" | "inactive">("all");
@@ -244,7 +268,31 @@ export default function SettingsPage() {
   const [coolOffDuration, setCoolOffDuration] = useState(48);
   const [coolOffUnit, setCoolOffUnit] = useState("hours");
   const [coolOffEnabled, setCoolOffEnabled] = useState(true);
-  const [coolOffBehaviour, setCoolOffBehaviour] = useState<"child" | "reopen">("child");
+  // Business Hours (SLA clock, auto-ack inside/outside hours; CSE: national/state holidays)
+  const [businessHoursTimezone, setBusinessHoursTimezone] = useState("Australia/Brisbane");
+  const [businessHoursDays, setBusinessHoursDays] = useState<Record<string, boolean>>({
+    mon: true, tue: true, wed: true, thu: true, fri: true, sat: false, sun: false,
+  });
+  const [businessHoursStart, setBusinessHoursStart] = useState("09:00");
+  const [businessHoursEnd, setBusinessHoursEnd] = useState("17:00");
+  const [businessHoursHolidayCalendar, setBusinessHoursHolidayCalendar] = useState("national");
+
+  // Case Types state (C-042 configurable types; CS-045 primary contact reason)
+  const [caseTypes, setCaseTypes] = useState<CaseTypeItem[]>(CASE_TYPES_INITIAL);
+  const [caseTypeFilterTab, setCaseTypeFilterTab] = useState<"all" | "active" | "inactive">("all");
+  const [caseTypeSearch, setCaseTypeSearch] = useState("");
+  const [caseTypeSheetOpen, setCaseTypeSheetOpen] = useState(false);
+  const [editingCaseTypeId, setEditingCaseTypeId] = useState<string | null>(null);
+  const [caseTypeForm, setCaseTypeForm] = useState({ name: "", primaryContactReason: "", active: true });
+  const [caseTypeToast, setCaseTypeToast] = useState({ show: false, message: "" });
+  const [caseTypeToDelete, setCaseTypeToDelete] = useState<string | null>(null);
+
+  // Case Types tab (groups + reasons from context)
+  const [groupSheetOpen, setGroupSheetOpen] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [groupForm, setGroupForm] = useState<{ name: string; caseClass: CaseType; types: CaseTypeInGroup[] }>({ name: "", caseClass: "Enquiry", types: [] });
+  const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
+  const [groupToast, setGroupToast] = useState({ show: false, message: "" });
 
   // Note Templates state
   const [noteTemplates, setNoteTemplates] = useState<NoteTemplateItem[]>([]);
@@ -635,6 +683,158 @@ export default function SettingsPage() {
     showSlaToast("Rule deleted");
   };
 
+  // Case Types: derived list for SLA dropdown (active names only)
+  const caseTypeNames = useMemo(() => caseTypes.filter((ct) => ct.active).map((ct) => ct.name), [caseTypes]);
+  const filteredCaseTypes = useMemo(() => {
+    let list = [...caseTypes];
+    if (caseTypeFilterTab === "active") list = list.filter((ct) => ct.active);
+    else if (caseTypeFilterTab === "inactive") list = list.filter((ct) => !ct.active);
+    if (caseTypeSearch.trim()) {
+      const q = caseTypeSearch.toLowerCase();
+      list = list.filter(
+        (ct) =>
+          ct.name.toLowerCase().includes(q) ||
+          (ct.primaryContactReason && ct.primaryContactReason.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [caseTypes, caseTypeFilterTab, caseTypeSearch]);
+  const caseTypeCounts = useMemo(
+    () => ({
+      all: caseTypes.length,
+      active: caseTypes.filter((ct) => ct.active).length,
+      inactive: caseTypes.filter((ct) => !ct.active).length,
+    }),
+    [caseTypes]
+  );
+  const showCaseTypeToast = (message: string) => {
+    setCaseTypeToast({ show: true, message });
+    setTimeout(() => setCaseTypeToast({ show: false, message: "" }), 3000);
+  };
+  const openCaseTypePanel = (mode: "new" | "edit", id?: string) => {
+    if (mode === "edit" && id) {
+      const ct = caseTypes.find((c) => c.id === id);
+      if (ct) {
+        setEditingCaseTypeId(id);
+        setCaseTypeForm({
+          name: ct.name,
+          primaryContactReason: ct.primaryContactReason || "",
+          active: ct.active,
+        });
+      }
+    } else {
+      setEditingCaseTypeId(null);
+      setCaseTypeForm({ name: "", primaryContactReason: "", active: true });
+    }
+    setCaseTypeSheetOpen(true);
+  };
+  const closeCaseTypePanel = () => {
+    setCaseTypeSheetOpen(false);
+    setEditingCaseTypeId(null);
+  };
+  const saveCaseType = () => {
+    const name = caseTypeForm.name.trim();
+    if (!name) return;
+    if (editingCaseTypeId) {
+      setCaseTypes((prev) =>
+        prev.map((ct) =>
+          ct.id === editingCaseTypeId
+            ? { ...ct, name, primaryContactReason: caseTypeForm.primaryContactReason, active: caseTypeForm.active }
+            : ct
+        )
+      );
+      showCaseTypeToast("Case type updated");
+    } else {
+      setCaseTypes((prev) => [
+        ...prev,
+        {
+          id: `ct-${Date.now()}`,
+          name,
+          primaryContactReason: caseTypeForm.primaryContactReason,
+          active: caseTypeForm.active,
+        },
+      ]);
+      showCaseTypeToast("Case type created");
+    }
+    closeCaseTypePanel();
+  };
+  const duplicateCaseType = (id: string) => {
+    const ct = caseTypes.find((c) => c.id === id);
+    if (!ct) return;
+    setCaseTypes((prev) => [
+      ...prev,
+      { ...ct, id: `ct-${Date.now()}`, name: `${ct.name} (copy)`, active: false },
+    ]);
+    showCaseTypeToast("Case type duplicated — edit to customise");
+  };
+  const deleteCaseType = (id: string) => {
+    setCaseTypes((prev) => prev.filter((ct) => ct.id !== id));
+    showCaseTypeToast("Case type deleted");
+    setCaseTypeToDelete(null);
+  };
+
+  // Case Groups (context)
+  const groups = caseClassification?.groups ?? [];
+  const setGroups = caseClassification?.setGroups ?? (() => {});
+  const showGroupToast = (message: string) => {
+    setGroupToast({ show: true, message });
+    setTimeout(() => setGroupToast({ show: false, message: "" }), 3000);
+  };
+  const openGroupPanel = (mode: "new" | "edit", id?: string) => {
+    if (mode === "edit" && id) {
+      const g = groups.find((x) => x.id === id);
+      if (g) {
+        setEditingGroupId(id);
+        setGroupForm({ name: g.name, caseClass: g.caseClass, types: g.types.map((t) => ({ label: t.label })) });
+      }
+    } else {
+      setEditingGroupId(null);
+      setGroupForm({ name: "", caseClass: "Enquiry", types: [{ label: "" }] });
+    }
+    setGroupSheetOpen(true);
+  };
+  const closeGroupPanel = () => {
+    setGroupSheetOpen(false);
+    setEditingGroupId(null);
+  };
+  const addGroupFormTypeRow = () => {
+    setGroupForm((f) => ({ ...f, types: [...f.types, { label: "" }] }));
+  };
+  const removeGroupFormTypeRow = (index: number) => {
+    setGroupForm((f) => ({ ...f, types: f.types.filter((_, i) => i !== index) }));
+  };
+  const updateGroupFormTypeLabel = (index: number, value: string) => {
+    setGroupForm((f) => ({
+      ...f,
+      types: f.types.map((t, i) => (i === index ? { ...t, label: value } : t)),
+    }));
+  };
+  const saveGroup = () => {
+    const name = groupForm.name.trim();
+    if (!name || !caseClassification) return;
+    const types = groupForm.types.map((t) => ({ label: t.label.trim() })).filter((t) => t.label);
+    if (editingGroupId) {
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.id === editingGroupId ? { ...g, name, caseClass: groupForm.caseClass, types } : g
+        )
+      );
+      showGroupToast("Case group updated");
+    } else {
+      setGroups((prev) => [
+        ...prev,
+        { id: `cg-${Date.now()}`, name, caseClass: groupForm.caseClass, types: types.length ? types : [{ label: "New type" }] },
+      ]);
+      showGroupToast("Case group created");
+    }
+    closeGroupPanel();
+  };
+  const deleteGroup = (id: string) => {
+    setGroups((prev) => prev.filter((g) => g.id !== id));
+    showGroupToast("Case group deleted");
+    setGroupToDelete(null);
+  };
+
   const isRegulatoryCaseClass = slaForm.caseClass === "Complaint" || slaForm.caseClass === "Life Support";
 
   return (
@@ -912,6 +1112,188 @@ export default function SettingsPage() {
               </Card>
             )}
 
+            {/* Case Classes (SLA / case class: Complaint, General Enquiry, EWR, etc.) */}
+            {activeTab === "caseClasses" && (
+              <Card className="shadow-none">
+                <SectionHeader
+                  title="Case Classes"
+                  description="Configure case classes and optional primary contact reason for reporting, routing, and SLA."
+                  action={
+                    <Button size="sm" className="gap-1.5" onClick={() => openCaseTypePanel("new")}>
+                      <Icon name="add" size="var(--tally-icon-size-sm)" />
+                      New Case Type
+                    </Button>
+                  }
+                />
+                <div className="px-density-lg pb-density-lg">
+                  <div className="mb-density-md mt-density-lg flex flex-wrap items-center gap-density-md">
+                    <div className="flex border-b border-border dark:border-gray-700">
+                      {[
+                        { key: "all" as const, label: "All", count: caseTypeCounts.all },
+                        { key: "active" as const, label: "Active", count: caseTypeCounts.active },
+                        { key: "inactive" as const, label: "Inactive", count: caseTypeCounts.inactive },
+                      ].map(({ key, label, count }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setCaseTypeFilterTab(key)}
+                          className={cn(
+                            "flex items-center gap-density-sm border-b-2 px-density-md py-density-sm font-medium transition-colors",
+                            caseTypeFilterTab === key
+                              ? "border-[#2C365D] text-[#2C365D] dark:border-[#7c8cb8] dark:text-[#7c8cb8]"
+                              : "border-transparent text-muted-foreground hover:text-gray-900 dark:hover:text-gray-100"
+                          )}
+                          style={{ fontSize: "var(--tally-font-size-sm)" }}
+                        >
+                          {label}
+                          <span
+                            className={cn(
+                              "inline-flex min-w-[18px] items-center justify-center rounded-full px-density-sm font-semibold",
+                              caseTypeFilterTab === key ? "bg-[#2C365D]/10 text-[#2C365D] dark:bg-[#7c8cb8]/10 dark:text-[#7c8cb8]" : "bg-gray-200 text-muted-foreground dark:bg-gray-700 dark:text-gray-400"
+                            )}
+                            style={{ height: "var(--tally-spacing-lg)", fontSize: "var(--tally-font-size-xs)" }}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="relative max-w-[320px] flex-1">
+                      <Icon name="search" size="var(--tally-icon-size-sm)" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Search case types..."
+                        value={caseTypeSearch}
+                        onChange={(e) => setCaseTypeSearch(e.target.value)}
+                        className="h-9 w-full rounded-density-md border border-border bg-white pl-9 pr-density-sm outline-none placeholder:text-muted-foreground focus:border-[#2C365D] focus:ring-1 focus:ring-[#2C365D] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                        style={{ fontSize: "var(--tally-font-size-sm)", paddingTop: "var(--tally-spacing-sm)", paddingBottom: "var(--tally-spacing-sm)" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded-density-md border border-border dark:border-gray-700">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Name</TableHead>
+                          <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Primary contact reason</TableHead>
+                          <TableHead className="w-24 bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Status</TableHead>
+                          <TableHead className="w-24 bg-gray-50 dark:bg-gray-800/50" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredCaseTypes.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="py-density-xl text-center text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                              {caseTypes.length === 0 ? "No case types yet. Create one to get started." : "No case types match your filters."}
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          filteredCaseTypes.map((ct) => (
+                            <TableRow key={ct.id} className="group">
+                              <TableCell>
+                                <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                  {ct.name}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                {ct.primaryContactReason || "—"}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={ct.active ? "success" : "outline"} className={cn("whitespace-nowrap", !ct.active && "text-muted-foreground")}>
+                                  {ct.active ? "● Active" : "○ Inactive"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-density-xs opacity-0 transition-opacity group-hover:opacity-100">
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openCaseTypePanel("edit", ct.id)} title="Edit">
+                                    <Icon name="edit" size="var(--tally-icon-size-sm)" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicateCaseType(ct.id)} title="Duplicate">
+                                    <Icon name="content_copy" size="var(--tally-icon-size-sm)" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-[#C40000]/10 hover:text-[#C40000]" onClick={() => setCaseTypeToDelete(ct.id)} title="Delete">
+                                    <Icon name="delete" size="var(--tally-icon-size-sm)" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Case Types (Group → Type → Reason: New Case dropdown config) */}
+            {activeTab === "caseTypes" && (
+              <Card className="shadow-none">
+                <SectionHeader
+                  title="Case Types"
+                  description="Configure case groups and their types for the New Case form (Group → Type)."
+                  action={
+                    caseClassification ? (
+                      <Button size="sm" className="gap-1.5" onClick={() => openGroupPanel("new")}>
+                        <Icon name="add" size="var(--tally-icon-size-sm)" />
+                        New Group
+                      </Button>
+                    ) : null
+                  }
+                />
+                <div className="px-density-lg pb-density-lg space-y-density-xl">
+                  {!caseClassification ? (
+                    <p className="py-density-lg text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                      Case classification is not available. Ensure you are within the CRM layout.
+                    </p>
+                  ) : (
+                    <>
+                      <div>
+                        <h3 className="mb-density-xs font-semibold text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>Case groups & types</h3>
+                        <p className="mb-density-md text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>Groups are the top-level dropdown in New Case; each group contains types.</p>
+                        <div className="overflow-hidden rounded-density-md border border-border dark:border-gray-700">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="hover:bg-transparent">
+                                <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Group</TableHead>
+                                <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Types</TableHead>
+                                <TableHead className="w-28 bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>Case class</TableHead>
+                                <TableHead className="w-24 bg-gray-50 dark:bg-gray-800/50" />
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {groups.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={4} className="py-density-xl text-center text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>No case groups. Add one to configure the New Case dropdown.</TableCell>
+                                </TableRow>
+                              ) : (
+                                groups.map((g) => (
+                                  <TableRow key={g.id} className="group">
+                                    <TableCell className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>{g.name}</TableCell>
+                                    <TableCell className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                                      {g.types.length} type{g.types.length !== 1 ? "s" : ""}
+                                    </TableCell>
+                                    <TableCell><Badge variant="outline" className="text-muted-foreground">{g.caseClass}</Badge></TableCell>
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-density-xs opacity-0 transition-opacity group-hover:opacity-100">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openGroupPanel("edit", g.id)} title="Edit"><Icon name="edit" size="var(--tally-icon-size-sm)" /></Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-[#C40000]/10 hover:text-[#C40000]" onClick={() => setGroupToDelete(g.id)} title="Delete"><Icon name="delete" size="var(--tally-icon-size-sm)" /></Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </Card>
+            )}
+
             {/* SLA Policies */}
             {activeTab === "slaPolicies" && (
               <Card className="shadow-none">
@@ -985,7 +1367,7 @@ export default function SettingsPage() {
                         className="h-9 border-border bg-white dark:border-gray-700 dark:bg-gray-900"
                       >
                         <option value="">All case types</option>
-                        {CASE_TYPES.map((ct) => (
+                        {caseTypeNames.map((ct) => (
                           <option key={ct} value={ct}>{ct}</option>
                         ))}
                       </Select>
@@ -1345,6 +1727,124 @@ export default function SettingsPage() {
               </Card>
             )}
 
+            {/* Business Hours (Cases) */}
+            {activeTab === "businessHours" && (
+              <Card className="shadow-none">
+                <SectionHeader
+                  title="Business Hours"
+                  description="Define when the organisation is considered open. Used for SLA clock (business hours only), auto-acknowledgement (inside vs outside hours), and after-hours behaviour."
+                />
+                <CardContent className="p-density-lg pt-density-xl">
+                  <div className="space-y-density-xl">
+                    <div className="max-w-[380px]">
+                      <label className="mb-density-sm block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                        Timezone
+                      </label>
+                      <Select
+                        value={businessHoursTimezone}
+                        onChange={(e) => setBusinessHoursTimezone(e.target.value)}
+                        className="h-9 w-full border-border bg-white dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        <option value="Australia/Brisbane">Australia/Brisbane (AEST/AEDT)</option>
+                        <option value="Australia/Sydney">Australia/Sydney</option>
+                        <option value="Australia/Melbourne">Australia/Melbourne</option>
+                        <option value="Australia/Adelaide">Australia/Adelaide</option>
+                        <option value="Australia/Perth">Australia/Perth</option>
+                        <option value="UTC">UTC</option>
+                      </Select>
+                      <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>
+                        All business hours and SLA calculations use this timezone.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="mb-density-sm block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                        Working days
+                      </label>
+                      <div className="flex flex-wrap gap-x-density-lg gap-y-density-sm">
+                        {[
+                          { key: "mon", label: "Mon" },
+                          { key: "tue", label: "Tue" },
+                          { key: "wed", label: "Wed" },
+                          { key: "thu", label: "Thu" },
+                          { key: "fri", label: "Fri" },
+                          { key: "sat", label: "Sat" },
+                          { key: "sun", label: "Sun" },
+                        ].map(({ key, label }) => (
+                          <Checkbox
+                            key={key}
+                            id={`business-hours-day-${key}`}
+                            label={label}
+                            checked={businessHoursDays[key] ?? false}
+                            onChange={(e) => setBusinessHoursDays((prev) => ({ ...prev, [key]: e.target.checked }))}
+                            className="shrink-0"
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>
+                        Days outside this set are treated as non-business (e.g. weekends).
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-end gap-density-lg">
+                      <div>
+                        <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                          Start time
+                        </label>
+                        <Input
+                          type="time"
+                          value={businessHoursStart}
+                          onChange={(e) => setBusinessHoursStart(e.target.value)}
+                          className="h-9 w-[140px]"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                          End time
+                        </label>
+                        <Input
+                          type="time"
+                          value={businessHoursEnd}
+                          onChange={(e) => setBusinessHoursEnd(e.target.value)}
+                          className="h-9 w-[140px]"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>
+                      Business hours window each working day. Outside this window, cases are treated as outside business hours (e.g. for auto-ack variants and after-hours service orders).
+                    </p>
+
+                    <div className="max-w-[380px]">
+                      <label className="mb-density-sm block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                        Public holiday calendar
+                      </label>
+                      <Select
+                        value={businessHoursHolidayCalendar}
+                        onChange={(e) => setBusinessHoursHolidayCalendar(e.target.value)}
+                        className="h-9 w-full border-border bg-white dark:border-gray-700 dark:bg-gray-900"
+                      >
+                        <option value="national">National (gazetted public holidays)</option>
+                        <option value="QLD">Queensland</option>
+                        <option value="NSW">New South Wales</option>
+                        <option value="VIC">Victoria</option>
+                        <option value="SA">South Australia</option>
+                        <option value="WA">Western Australia</option>
+                        <option value="TAS">Tasmania</option>
+                        <option value="ACT">Australian Capital Territory</option>
+                        <option value="NT">Northern Territory</option>
+                      </Select>
+                      <div className="mt-density-sm flex items-start gap-density-sm rounded-density-md border border-[#2C365D]/30 bg-[#2C365D]/5 px-density-md py-density-sm dark:border-[#7c8cb8]/30 dark:bg-[#7c8cb8]/10">
+                        <Icon name="info" size="var(--tally-icon-size-sm)" className="mt-0.5 shrink-0 text-[#2C365D] dark:text-[#7c8cb8]" />
+                        <p className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: "var(--tally-line-height-normal)" }}>
+                          National and state-based holidays are maintained by Tally as part of global system updates. Regional public holidays are not supported via automated calendars.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Cool Off Period (Cases) */}
             {activeTab === "coolOffPeriod" && (
               <Card className="shadow-none">
@@ -1407,78 +1907,31 @@ export default function SettingsPage() {
 
                         <div>
                           <label className="mb-density-sm block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>
-                            Behaviour when reply arrives
+                            How it works
                           </label>
-                          <div className="space-y-density-sm">
-                            <div
-                              className={cn(
-                                "flex cursor-pointer items-start gap-density-md rounded-density-md border px-density-md py-density-sm transition-colors",
-                                coolOffBehaviour === "reopen"
-                                  ? "border-[#006180] bg-[#006180]/5 dark:border-[#0091BF] dark:bg-[#0091BF]/10"
-                                  : "border-border bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-                              )}
-                              onClick={() => setCoolOffBehaviour("reopen")}
-                            >
-                              <div className="mt-0.5 shrink-0">
-                                <div className={cn(
-                                  "flex h-4 w-4 items-center justify-center rounded-full border-2",
-                                  coolOffBehaviour === "reopen"
-                                    ? "border-[#006180] dark:border-[#80E0FF]"
-                                    : "border-gray-400 dark:border-gray-500"
-                                )}>
-                                  {coolOffBehaviour === "reopen" && (
-                                    <div className="h-2 w-2 rounded-full bg-[#006180] dark:bg-[#80E0FF]" />
-                                  )}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
-                                  Within cool-off window: Reopen parent case
-                                </div>
-                                <div className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", marginTop: "var(--tally-spacing-xs)" }}>
-                                  If the customer replies within {coolOffDuration} {coolOffUnit} of closure, the original case is reopened with a new SLA clock.
-                                </div>
-                              </div>
-                            </div>
-
-                            <div
-                              className={cn(
-                                "flex cursor-pointer items-start gap-density-md rounded-density-md border px-density-md py-density-sm transition-colors",
-                                coolOffBehaviour === "child"
-                                  ? "border-[#006180] bg-[#006180]/5 dark:border-[#0091BF] dark:bg-[#0091BF]/10"
-                                  : "border-border bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-                              )}
-                              onClick={() => setCoolOffBehaviour("child")}
-                            >
-                              <div className="mt-0.5 shrink-0">
-                                <div className={cn(
-                                  "flex h-4 w-4 items-center justify-center rounded-full border-2",
-                                  coolOffBehaviour === "child"
-                                    ? "border-[#006180] dark:border-[#80E0FF]"
-                                    : "border-gray-400 dark:border-gray-500"
-                                )}>
-                                  {coolOffBehaviour === "child" && (
-                                    <div className="h-2 w-2 rounded-full bg-[#006180] dark:bg-[#80E0FF]" />
-                                  )}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
-                                  Outside cool-off window: Create child case
-                                </div>
-                                <div className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", marginTop: "var(--tally-spacing-xs)" }}>
-                                  If the reply arrives after {coolOffDuration} {coolOffUnit}, a new child case is auto-created and linked to the original. The parent case stays closed.
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-density-sm rounded-density-md border border-[#2C365D]/30 bg-[#2C365D]/5 px-density-md py-density-sm dark:border-[#7c8cb8]/30 dark:bg-[#7c8cb8]/10">
-                          <Icon name="info" size="var(--tally-icon-size-sm)" className="mt-0.5 shrink-0 text-[#2C365D] dark:text-[#7c8cb8]" />
-                          <p className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: "var(--tally-line-height-normal)" }}>
-                            Both options above apply in sequence. Replies within the window reopen the parent; replies outside it create a child case. Child cases get their own independent SLA tracking while the parent case metrics remain untouched.
+                          <p className="mb-density-md text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)", lineHeight: 1.5 }}>
+                            The system applies different behaviour depending on when the customer replies:
                           </p>
+                          <ul className="space-y-density-sm">
+                            <li className="flex items-center gap-density-md rounded-density-md border border-border bg-gray-50 px-density-md py-density-sm dark:border-gray-700 dark:bg-gray-800">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-[#006180] dark:bg-[#80E0FF]" aria-hidden />
+                              <div>
+                                <span className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                  Within {coolOffDuration} {coolOffUnit} of closure
+                                </span>
+                                <span className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}> — The original case is reopened with a new SLA clock.</span>
+                              </div>
+                            </li>
+                            <li className="flex items-center gap-density-md rounded-density-md border border-border bg-gray-50 px-density-md py-density-sm dark:border-gray-700 dark:bg-gray-800">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-[#006180] dark:bg-[#80E0FF]" aria-hidden />
+                              <div>
+                                <span className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>
+                                  After {coolOffDuration} {coolOffUnit}
+                                </span>
+                                <span className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}> — A new child case is auto-created and linked to the original. The parent case stays closed and child cases get their own SLA tracking.</span>
+                              </div>
+                            </li>
+                          </ul>
                         </div>
                       </>
                     )}
@@ -1506,7 +1959,11 @@ export default function SettingsPage() {
             {activeTab !== "users" &&
               activeTab !== "roles" &&
               activeTab !== "permissions" &&
+              activeTab !== "caseClasses" &&
+              activeTab !== "caseTypes" &&
               activeTab !== "slaPolicies" &&
+              activeTab !== "businessHours" &&
+              activeTab !== "templates" &&
               activeTab !== "noteTemplates" &&
               activeTab !== "general" &&
               activeTab !== "coolOffPeriod" && (
@@ -1552,6 +2009,186 @@ export default function SettingsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Confirm delete Case Type */}
+      <AlertDialog open={caseTypeToDelete !== null} onOpenChange={(open) => !open && setCaseTypeToDelete(null)}>
+        <AlertDialogContent className="dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-gray-100">Delete case type</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
+              Are you sure you want to delete the case type &quot;{caseTypeToDelete != null ? caseTypes.find((ct) => ct.id === caseTypeToDelete)?.name : ""}&quot;? This cannot be undone. SLA rules that reference this type may need to be updated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="hover:bg-[#C40000]/90 bg-[#C40000] text-white focus-visible:ring-[#C40000] dark:hover:bg-[#C40000]/80"
+              onClick={() => caseTypeToDelete != null && deleteCaseType(caseTypeToDelete)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Case Type slide-over panel */}
+      <Sheet open={caseTypeSheetOpen} onOpenChange={setCaseTypeSheetOpen}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-white p-0 dark:border-gray-700 dark:bg-gray-900 sm:!max-w-[480px]"
+          style={{ maxWidth: "min(480px, 100vw)" }}
+        >
+          <SheetHeader className="flex flex-row items-start justify-between gap-density-md border-b border-border px-density-lg py-density-md dark:border-gray-700">
+            <div>
+              <SheetTitle className="font-semibold text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}>
+                {editingCaseTypeId ? "Edit Case Type" : "New Case Type"}
+              </SheetTitle>
+              <SheetDescription className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: "var(--tally-line-height-normal)" }}>
+                {editingCaseTypeId ? caseTypes.find((ct) => ct.id === editingCaseTypeId)?.name : "Configure name and optional primary contact reason for reporting, routing, and SLA (CS-045)."}
+              </SheetDescription>
+            </div>
+            <SheetClose className="relative right-0 top-0 rounded-density-md p-density-sm hover:bg-gray-100 dark:hover:bg-gray-800" />
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-density-lg py-density-lg">
+            <div className="space-y-density-md">
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Name <span className="text-[#C40000]">*</span></label>
+                <Input
+                  value={caseTypeForm.name}
+                  onChange={(e) => setCaseTypeForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. General Enquiry"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Primary contact reason <span className="font-normal text-muted-foreground">(optional)</span></label>
+                <Select
+                  value={caseTypeForm.primaryContactReason}
+                  onChange={(e) => setCaseTypeForm((f) => ({ ...f, primaryContactReason: e.target.value }))}
+                  className="h-9"
+                >
+                  <option value="">None</option>
+                  {CONTACT_REASONS.slice(1).map((cr) => (
+                    <option key={cr} value={cr}>{cr}</option>
+                  ))}
+                </Select>
+                <p className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: 1.4 }}>Used for reporting, routing, and SLA measurement (CS-045).</p>
+              </div>
+              <div className="flex items-center justify-between rounded-density-md border border-border bg-gray-50 px-density-md py-density-sm dark:border-gray-700 dark:bg-gray-800">
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-sm)" }}>Active</div>
+                  <div className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", marginTop: "var(--tally-spacing-xs)" }}>Inactive types are hidden from case creation and SLA case type lists.</div>
+                </div>
+                <Switch
+                  checked={caseTypeForm.active}
+                  onChange={(e) => setCaseTypeForm((f) => ({ ...f, active: (e.target as HTMLInputElement).checked }))}
+                />
+              </div>
+            </div>
+          </div>
+          <SheetFooter className="flex flex-row justify-end gap-density-sm border-t border-border px-density-lg py-density-md dark:border-gray-700">
+            <Button variant="outline" onClick={closeCaseTypePanel}>Cancel</Button>
+            <Button onClick={saveCaseType} disabled={!caseTypeForm.name.trim()}>Save</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Case Group slide-over panel */}
+      <Sheet open={groupSheetOpen} onOpenChange={setGroupSheetOpen}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-white p-0 dark:border-gray-700 dark:bg-gray-900 sm:!max-w-[520px]"
+          style={{ maxWidth: "min(520px, 100vw)" }}
+        >
+          <SheetHeader className="flex flex-row items-start justify-between gap-density-md border-b border-border px-density-lg py-density-md dark:border-gray-700">
+            <div>
+              <SheetTitle className="font-semibold text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}>
+                {editingGroupId ? "Edit Case Group" : "New Case Group"}
+              </SheetTitle>
+              <SheetDescription className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: "var(--tally-line-height-normal)" }}>
+                Group name is the first dropdown in New Case; types listed below are the options under it.
+              </SheetDescription>
+            </div>
+            <SheetClose className="relative right-0 top-0 rounded-density-md p-density-sm hover:bg-gray-100 dark:hover:bg-gray-800" />
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-density-lg py-density-lg">
+            <div className="space-y-density-md">
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Group name <span className="text-[#C40000]">*</span></label>
+                <Input
+                  value={groupForm.name}
+                  onChange={(e) => setGroupForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Move-In / Move-Out & Account Changes"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Case class</label>
+                <Select
+                  value={groupForm.caseClass}
+                  onChange={(e) => setGroupForm((f) => ({ ...f, caseClass: e.target.value as CaseType }))}
+                  className="h-9"
+                >
+                  {CASE_CLASS_OPTIONS.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <div className="mb-density-xs flex items-center justify-between">
+                  <label className="block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Types</label>
+                  <Button type="button" variant="outline" size="sm" className="h-7 gap-1" onClick={addGroupFormTypeRow}>
+                    <Icon name="add" size={14} />
+                    Add type
+                  </Button>
+                </div>
+                <p className="mb-density-sm text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>Each type appears in the Case Type dropdown when its group is selected.</p>
+                <div className="space-y-density-sm">
+                  {groupForm.types.map((t, idx) => (
+                    <div key={idx} className="flex items-center gap-density-sm rounded-density-md border border-border bg-gray-50/50 px-density-sm py-density-xs dark:border-gray-700 dark:bg-gray-800/50">
+                      <Input
+                        value={t.label}
+                        onChange={(e) => updateGroupFormTypeLabel(idx, e.target.value)}
+                        placeholder="Type label"
+                        className="h-8 flex-1 min-w-[140px]"
+                        style={{ fontSize: "var(--tally-font-size-sm)" }}
+                      />
+                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 hover:bg-[#C40000]/10 hover:text-[#C40000]" onClick={() => removeGroupFormTypeRow(idx)} title="Remove type">
+                        <Icon name="delete" size="var(--tally-icon-size-sm)" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <SheetFooter className="flex flex-row justify-end gap-density-sm border-t border-border px-density-lg py-density-md dark:border-gray-700">
+            <Button variant="outline" onClick={closeGroupPanel}>Cancel</Button>
+            <Button onClick={saveGroup} disabled={!groupForm.name.trim()}>Save</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Confirm delete Case Group */}
+      <AlertDialog open={groupToDelete !== null} onOpenChange={(open) => !open && setGroupToDelete(null)}>
+        <AlertDialogContent className="dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-gray-100">Delete case group</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
+              Are you sure you want to delete the group &quot;{groupToDelete != null ? groups.find((g) => g.id === groupToDelete)?.name : ""}&quot;? This will remove it from the New Case dropdown.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="hover:bg-[#C40000]/90 bg-[#C40000] text-white focus-visible:ring-[#C40000] dark:hover:bg-[#C40000]/80"
+              onClick={() => groupToDelete != null && deleteGroup(groupToDelete)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* SLA Rule slide-over panel */}
       <Sheet open={slaSheetOpen} onOpenChange={setSlaSheetOpen}>
         <SheetContent
@@ -1572,7 +2209,7 @@ export default function SettingsPage() {
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto px-density-lg py-density-lg">
-            <div className="mb-density-xl">
+                  <div className="mb-density-xl">
               <div className="border-b border-border pb-density-xs font-semibold uppercase tracking-wider text-muted-foreground dark:border-gray-700" style={{ fontSize: "var(--tally-font-size-xs)", letterSpacing: "0.08em", marginBottom: "var(--tally-spacing-md)" }}>Identity</div>
               <div className="space-y-density-md">
                 <div>
@@ -1594,7 +2231,7 @@ export default function SettingsPage() {
                       className="h-9"
                     >
                       <option value="">Select…</option>
-                      {CASE_TYPES.map((ct) => (
+                      {caseTypeNames.map((ct) => (
                         <option key={ct} value={ct}>{ct}</option>
                       ))}
                     </Select>
@@ -1786,6 +2423,38 @@ export default function SettingsPage() {
         >
           <Icon name="check" size="var(--tally-icon-size-md)" className="shrink-0 text-green-600 dark:text-green-400" />
           <span>{slaToast.message}</span>
+        </div>
+      )}
+
+      {caseTypeToast.show && (
+        <div
+          className="fixed z-[200] flex items-center gap-density-sm rounded-density-md border border-green-500 bg-white shadow-lg dark:border-green-600 dark:bg-gray-900"
+          style={{
+            bottom: "var(--tally-spacing-xl)",
+            right: "var(--tally-spacing-xl)",
+            fontSize: "var(--tally-font-size-sm)",
+            padding: "var(--tally-spacing-md) var(--tally-spacing-lg)",
+            lineHeight: "var(--tally-line-height-normal)",
+          }}
+        >
+          <Icon name="check" size="var(--tally-icon-size-md)" className="shrink-0 text-green-600 dark:text-green-400" />
+          <span>{caseTypeToast.message}</span>
+        </div>
+      )}
+
+      {groupToast.show && (
+        <div
+          className="fixed z-[200] flex items-center gap-density-sm rounded-density-md border border-green-500 bg-white shadow-lg dark:border-green-600 dark:bg-gray-900"
+          style={{
+            bottom: "var(--tally-spacing-xl)",
+            right: "var(--tally-spacing-xl)",
+            fontSize: "var(--tally-font-size-sm)",
+            padding: "var(--tally-spacing-md) var(--tally-spacing-lg)",
+            lineHeight: "var(--tally-line-height-normal)",
+          }}
+        >
+          <Icon name="check" size="var(--tally-icon-size-md)" className="shrink-0 text-green-600 dark:text-green-400" />
+          <span>{groupToast.message}</span>
         </div>
       )}
 

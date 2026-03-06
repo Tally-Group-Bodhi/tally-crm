@@ -6,12 +6,8 @@ import Button from "@/components/Button/Button";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { mockAccounts, mockOrgs } from "@/lib/mock-data/accounts";
-import {
-  CASE_TYPE_GROUPS,
-  CASE_GROUP_TO_TYPE,
-  CASE_TYPE_TO_GROUP,
-  CASE_GROUP_TO_REASON,
-} from "@/lib/mock-data/case-types";
+import { CASE_TYPE_GROUPS, CASE_GROUP_TO_TYPE, CASE_TYPE_TO_GROUP } from "@/lib/mock-data/case-types";
+import { useCaseClassification } from "@/lib/case-classification-context";
 import { generateCaseNumber } from "@/lib/case-number";
 import type { CaseItem, CasePriority, CaseStatus, CaseType } from "@/types/crm";
 
@@ -34,17 +30,6 @@ const originIcons: Record<(typeof CASE_ORIGINS)[number], string> = {
   "Social Media": "share",
 };
 
-const CASE_REASONS = [
-  "Billing Dispute",
-  "Service Quality",
-  "Meter Issue",
-  "Rate Review",
-  "New Connection",
-  "Contract Amendment",
-  "Payment Issue",
-  "General Enquiry",
-  "Other",
-] as const;
 const OWNER_OPTIONS = ["John Smith", "Daniel Cooper", "Unassigned"];
 /** Default to logged-in user; in this app that's John Smith (could come from auth/session later) */
 const DEFAULT_OWNER = "John Smith";
@@ -86,6 +71,36 @@ function parseCreatedDate(s: string): number {
 }
 
 export default function NewCaseModal({ onClose, onCreate, caseCount, createViaApi, cases: allCases = [] }: NewCaseModalProps) {
+  const caseClassification = useCaseClassification();
+  const groupNames = React.useMemo(
+    () => (caseClassification ? caseClassification.groups.map((g) => g.name) : Object.keys(CASE_TYPE_GROUPS)),
+    [caseClassification]
+  );
+  const getTypeLabelsForGroup = React.useCallback(
+    (groupName: string) => {
+      if (caseClassification) return caseClassification.getTypeLabelsByGroupName(groupName);
+      return CASE_TYPE_GROUPS[groupName] ?? [];
+    },
+    [caseClassification]
+  );
+  const getCaseClassForGroup = React.useCallback(
+    (groupName: string) => {
+      if (caseClassification) return caseClassification.getCaseClassByGroupName(groupName);
+      return (CASE_GROUP_TO_TYPE[groupName] ?? "Enquiry") as CaseType;
+    },
+    [caseClassification]
+  );
+  const getGroupNameForType = React.useCallback(
+    (typeName: string) => {
+      if (caseClassification) {
+        const g = caseClassification.groups.find((x) => x.types.some((t) => t.label === typeName));
+        return g?.name ?? "";
+      }
+      return CASE_TYPE_TO_GROUP[typeName] ?? "";
+    },
+    [caseClassification]
+  );
+
   const [contactName, setContactName] = React.useState("");
   const [contactId, setContactId] = React.useState("");
   const [accountId, setAccountId] = React.useState("");
@@ -96,7 +111,6 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
   const [caseGroup, setCaseGroup] = React.useState("");
   const [caseType, setCaseType] = React.useState("");
   const [priority, setPriority] = React.useState<CasePriority>("Medium");
-  const [caseReason, setCaseReason] = React.useState("");
   const [subject, setSubject] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [owner, setOwner] = React.useState(DEFAULT_OWNER);
@@ -243,7 +257,6 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
     setCaseGroup("");
     setCaseType("");
     setPriority("Medium");
-    setCaseReason("");
     setSubject("");
     setDescription("");
     setOwner(DEFAULT_OWNER);
@@ -262,8 +275,8 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
       caseNumber: generateCaseNumber(selectedAccount?.name ?? "Unknown Account", caseCount + 1847),
       accountId: accountId || "acc-001",
       accountName: selectedAccount?.name ?? "Unknown Account",
-      type: (CASE_GROUP_TO_TYPE[caseGroup] ?? CASE_GROUP_TO_TYPE[CASE_TYPE_TO_GROUP[caseType]] ?? "Enquiry") as CaseType,
-      subType: caseType || caseReason || "General Enquiry",
+      type: (getCaseClassForGroup(caseGroup) || (caseType && getCaseClassForGroup(getGroupNameForType(caseType))) || "Enquiry") as CaseType,
+      subType: caseType || "General Enquiry",
       status,
       priority,
       slaStatus: "On Track",
@@ -295,10 +308,6 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
     if (caseOrigin === "Phone") {
       if (!caseType.trim()) {
         setSubmitError("Case Type is required for Phone cases.");
-        return;
-      }
-      if (!caseReason.trim()) {
-        setSubmitError("Case Reason is required for Phone cases.");
         return;
       }
     }
@@ -816,14 +825,14 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
                     onChange={(e) => {
                       const nextGroup = e.target.value;
                       setCaseGroup(nextGroup);
-                      const typesInGroup = CASE_TYPE_GROUPS[nextGroup] ?? [];
+                      const typesInGroup = getTypeLabelsForGroup(nextGroup);
                       if (caseType && !typesInGroup.includes(caseType)) {
                         setCaseType("");
                       }
                     }}
                   >
                     <option value="">--Select case group--</option>
-                    {Object.keys(CASE_TYPE_GROUPS).map((groupName) => (
+                    {groupNames.map((groupName) => (
                       <option key={groupName} value={groupName}>
                         {groupName}
                       </option>
@@ -851,18 +860,12 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
                     style={{ fontSize: "var(--tally-font-size-sm)" }}
                     value={caseType}
                     disabled={!caseGroup}
-                    onChange={(e) => {
-                      const typeName = e.target.value;
-                      setCaseType(typeName);
-                      if (caseGroup && CASE_GROUP_TO_REASON[caseGroup]) {
-                        setCaseReason(CASE_GROUP_TO_REASON[caseGroup]);
-                      }
-                    }}
+                    onChange={(e) => setCaseType(e.target.value)}
                   >
                     <option value="">
                       {caseGroup ? "--Select case type--" : "Select case group first"}
                     </option>
-                    {(CASE_TYPE_GROUPS[caseGroup] ?? []).map((typeName) => (
+                    {getTypeLabelsForGroup(caseGroup).map((typeName) => (
                       <option key={typeName} value={typeName}>
                         {typeName}
                       </option>
@@ -918,32 +921,6 @@ export default function NewCaseModal({ onClose, onCreate, caseCount, createViaAp
                       ))}
                     </div>
                   )}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className={formLabel}>
-                  Case Reason{caseOrigin === "Phone" && <span className="text-red-500"> *</span>}
-                </label>
-                <div className="relative">
-                  <select
-                    className={cn(formInput, "cursor-pointer appearance-none pr-9")}
-                    style={{ fontSize: "var(--tally-font-size-sm)" }}
-                    value={caseReason}
-                    onChange={(e) => setCaseReason(e.target.value)}
-                  >
-                    <option value="">--None--</option>
-                    {CASE_REASONS.map((r) => (
-                      <option key={r} value={r}>
-                        {r}
-                      </option>
-                    ))}
-                  </select>
-                  <Icon
-                    name="expand_more"
-                    size={16}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
                 </div>
               </div>
 
