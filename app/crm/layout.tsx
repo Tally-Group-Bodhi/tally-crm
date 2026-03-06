@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { CaseLinksOverridesProvider } from "@/lib/case-links-overrides";
 import { CaseClassificationProvider } from "@/lib/case-classification-context";
+import { CrmUserProvider } from "@/lib/crm-user-context";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
@@ -363,9 +364,11 @@ export default function CRMLayout({
 
         {/* ── Main content ─────────────────────────────────────────── */}
         <main className="flex min-h-0 min-w-0 flex-1 bg-gradient-to-br from-sky-50/70 via-background to-blue-50/50 dark:from-sky-950/25 dark:via-background dark:to-blue-950/20">
-          <CaseClassificationProvider>
-            <CaseLinksOverridesProvider>{children}</CaseLinksOverridesProvider>
-          </CaseClassificationProvider>
+          <CrmUserProvider>
+            <CaseClassificationProvider>
+              <CaseLinksOverridesProvider>{children}</CaseLinksOverridesProvider>
+            </CaseClassificationProvider>
+          </CrmUserProvider>
         </main>
       </div>
       <ToastViewport />

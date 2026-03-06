@@ -41,6 +41,7 @@ import {
 } from "@/components/AlertDialog/AlertDialog";
 import { cn } from "@/lib/utils";
 import { useCaseClassification } from "@/lib/case-classification-context";
+import { useCrmUser } from "@/lib/crm-user-context";
 import type { CaseGroupItem, CaseTypeInGroup } from "@/lib/mock-data/case-types";
 import type { CaseType } from "@/types/crm";
 
@@ -53,7 +54,7 @@ const SETTINGS_TABS = [
   { key: "caseTypes", label: "Case Types", icon: "folder" },
   { key: "slaPolicies", label: "SLA Policies", icon: "timer" },
   { key: "businessHours", label: "Business Hours", icon: "work_history" },
-  { key: "coolOffPeriod", label: "Cool Off Period", icon: "schedule" },
+  { key: "coolOffPeriod", label: "Cooling-Off Period", icon: "schedule" },
   { key: "templates", label: "Email Templates", icon: "drafts" },
   { key: "noteTemplates", label: "Note Templates", icon: "sticky_note_2" },
   { key: "inboxes", label: "Inboxes", icon: "inbox" },
@@ -70,26 +71,92 @@ const SETTINGS_CATEGORIES: { label: string; tabKeys: string[] }[] = [
   { label: "System", tabKeys: ["audit", "general"] },
 ];
 
-const USERS_DATA = [
+interface UserRow {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+  role: string;
+  roleLabel: string;
+  team: string;
+  status: "active" | "inactive" | "pending";
+  lastActive: string;
+  showDelete: boolean;
+}
+
+const USERS_DATA: UserRow[] = [
   { id: "1", name: "Sarah Mitchell", email: "sarah.mitchell@tally.com", initials: "SM", role: "sales-manager", roleLabel: "Sales Manager", team: "Sales", status: "active", lastActive: "Today, 10:14 AM", showDelete: false },
   { id: "2", name: "John Davis", email: "john.davis@tally.com", initials: "JD", role: "sales-rep", roleLabel: "Sales Rep", team: "Sales", status: "active", lastActive: "Yesterday, 4:30 PM", showDelete: false },
   { id: "3", name: "Lisa Chen", email: "lisa.chen@tally.com", initials: "LC", role: "ops-supervisor", roleLabel: "Ops Supervisor", team: "Operations", status: "pending", lastActive: "Dec 8, 2024", showDelete: false },
+  { id: "5", name: "Jordan Lee", email: "jordan.lee@tally.com", initials: "JL", role: "case-manager", roleLabel: "Case Manager", team: "Support", status: "active", lastActive: "Today, 9:22 AM", showDelete: false },
+  { id: "6", name: "Sam Rivera", email: "sam.rivera@tally.com", initials: "SR", role: "case-agent", roleLabel: "Case Agent", team: "Support", status: "active", lastActive: "Today, 8:45 AM", showDelete: false },
   { id: "4", name: "Alex Morgan", email: "alex.morgan@tally.com", initials: "AM", role: "admin", roleLabel: "Administrator", team: "Admin", status: "inactive", lastActive: "Nov 30, 2024", showDelete: true },
 ];
+
+const USER_ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: "admin", label: "Administrator" },
+  { value: "sales-manager", label: "Sales Manager" },
+  { value: "sales-rep", label: "Sales Rep" },
+  { value: "case-manager", label: "Case Manager" },
+  { value: "case-agent", label: "Case Agent" },
+  { value: "ops-supervisor", label: "Ops Supervisor" },
+];
+
+const USER_TEAM_OPTIONS = ["Sales", "Support", "Operations", "Admin"];
+
+const defaultAddUserForm = {
+  name: "",
+  email: "",
+  role: "sales-rep",
+  roleLabel: "Sales Rep",
+  team: "Sales",
+  status: "active" as "active" | "inactive" | "pending",
+};
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  if (parts[0].length >= 2) return parts[0].slice(0, 2).toUpperCase();
+  return parts[0]?.[0]?.toUpperCase() ?? "?";
+}
 
 const ROLES_DATA = [
   { name: "Administrator", count: 2, description: "Full system access, configuration, and audit privileges.", badges: [{ label: "All Access", active: true }, { label: "Audit", active: true }, { label: "RBAC", active: true }] },
   { name: "Sales Manager", count: 4, description: "Manage sales pipeline, approve contracts, oversee team performance.", badges: [{ label: "Opportunities", active: true }, { label: "Contracts", active: true }, { label: "Reports", active: false }] },
-  { name: "Ops Supervisor", count: 3, description: "Manage case triage, SLA policies, and escalation workflows.", badges: [{ label: "Cases", active: true }, { label: "SLA", active: true }, { label: "Audit", active: false }] },
   { name: "Sales Rep", count: 12, description: "Manage assigned opportunities and activity logs.", badges: [{ label: "Opportunities", active: true }, { label: "Activities", active: false }, { label: "Documents", active: false }] },
+  { name: "Case Manager", count: 3, description: "Oversee case queue, assign cases, manage escalations and SLA compliance.", badges: [{ label: "Cases", active: true }, { label: "SLA", active: true }, { label: "Assign", active: true }] },
+  { name: "Case Agent", count: 8, description: "Work assigned cases, update status, add notes and communications.", badges: [{ label: "Cases", active: true }, { label: "Notes", active: true }, { label: "Communications", active: true }] },
+  { name: "Ops Supervisor", count: 3, description: "Manage case triage, SLA policies, and escalation workflows.", badges: [{ label: "Cases", active: true }, { label: "SLA", active: true }, { label: "Audit", active: false }] },
 ];
 
-const PERMISSIONS_MATRIX = [
-  { resource: "Cases", admin: "check", manager: "check", agent: "check", viewer: "visibility" },
-  { resource: "Opportunities", admin: "check", manager: "check", agent: "check", viewer: "visibility" },
-  { resource: "Contracts", admin: "check", manager: "check", agent: "remove", viewer: "visibility" },
-  { resource: "Admin", admin: "check", manager: "remove", agent: "close", viewer: "close" },
+const PERMISSIONS_MATRIX_CASES = [
+  { resource: "View all cases", Admin: "check", "Case Manager": "check", "Case Agent": "remove" },
+  { resource: "Create case", Admin: "check", "Case Manager": "check", "Case Agent": "check" },
+  { resource: "Assign / Reassign", Admin: "check", "Case Manager": "check", "Case Agent": "remove" },
+  { resource: "Close case", Admin: "check", "Case Manager": "check", "Case Agent": "check" },
+  { resource: "Delete case", Admin: "check", "Case Manager": "check", "Case Agent": "remove" },
+  { resource: "Notes & communications", Admin: "check", "Case Manager": "check", "Case Agent": "check" },
+  { resource: "Link cases", Admin: "check", "Case Manager": "check", "Case Agent": "check" },
 ];
+
+interface CustomRoleItem {
+  value: string;
+  name: string;
+  description: string;
+  badges: { label: string; active: boolean }[];
+}
+
+const defaultCreateRoleForm = {
+  name: "",
+  description: "",
+  canViewAllCases: false,
+  canCreateCase: true,
+  canAssignCase: false,
+  canCloseCase: true,
+  canDeleteCase: false,
+  canAddNotesAndComms: true,
+  canLinkCases: true,
+};
 
 type SLARuleType = "regulatory" | "internal";
 type SLARuleStatus = "active" | "inactive";
@@ -189,6 +256,8 @@ function RoleBadge({ role, label }: { role: string; label?: string }) {
     admin: "default",
     "sales-rep": "info",
     "sales-manager": "info",
+    "case-manager": "warning",
+    "case-agent": "info",
     "ops-supervisor": "warning",
   };
   const variant = config[role] ?? "default";
@@ -252,9 +321,43 @@ const defaultSLAForm = {
   active: true,
 };
 
+type DisplayRoleItem = { name: string; count: number; description: string; badges: { label: string; active: boolean }[]; value?: string; locked?: boolean };
+
 export default function SettingsPage() {
   const caseClassification = useCaseClassification();
+  const { user: currentUser, casePermissions } = useCrmUser();
+  const canManageUsers = casePermissions.canManageUsers;
+  const canManageRoles = casePermissions.canManageRoles;
+
   const [activeTab, setActiveTab] = useState("users");
+  const [users, setUsers] = useState<UserRow[]>(USERS_DATA);
+  const [addUserSheetOpen, setAddUserSheetOpen] = useState(false);
+  const [addUserForm, setAddUserForm] = useState(defaultAddUserForm);
+  const [customRoles, setCustomRoles] = useState<CustomRoleItem[]>([]);
+  const [createRoleSheetOpen, setCreateRoleSheetOpen] = useState(false);
+  const [createRoleForm, setCreateRoleForm] = useState(defaultCreateRoleForm);
+  const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
+
+  const userRoleOptions = useMemo(
+    () => [...USER_ROLE_OPTIONS, ...customRoles.map((c) => ({ value: c.value, label: c.name }))],
+    [customRoles]
+  );
+  const displayRoles = useMemo<DisplayRoleItem[]>(
+    () => [
+      ...ROLES_DATA.map((r) => ({ ...r, locked: true as const })),
+      ...customRoles.map((c) => ({
+        name: c.name,
+        count: users.filter((u) => u.role === c.value).length,
+        description: c.description,
+        badges: c.badges,
+        value: c.value,
+        locked: false,
+      })),
+    ],
+    [customRoles, users]
+  );
+
   const [slaRules, setSlaRules] = useState<SLARule[]>(SLA_RULES_DATA);
   const [slaFilterTab, setSlaFilterTab] = useState<"all" | "regulatory" | "internal" | "inactive">("all");
   const [slaSearch, setSlaSearch] = useState("");
@@ -773,6 +876,68 @@ export default function SettingsPage() {
     setCaseTypeToDelete(null);
   };
 
+  const saveCreateRole = () => {
+    const name = createRoleForm.name.trim();
+    if (!name) return;
+    const value = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || "role";
+    const badges: { label: string; active: boolean }[] = [
+      { label: "View all cases", active: createRoleForm.canViewAllCases },
+      { label: "Create case", active: createRoleForm.canCreateCase },
+      { label: "Assign", active: createRoleForm.canAssignCase },
+      { label: "Close case", active: createRoleForm.canCloseCase },
+      { label: "Delete case", active: createRoleForm.canDeleteCase },
+      { label: "Notes & comms", active: createRoleForm.canAddNotesAndComms },
+      { label: "Link cases", active: createRoleForm.canLinkCases },
+    ].filter((b) => b.active);
+    setCustomRoles((prev) => [
+      ...prev,
+      {
+        value: `${value}-${Date.now()}`,
+        name,
+        description: createRoleForm.description.trim() || "Custom role for cases.",
+        badges: badges.length ? badges : [{ label: "Cases", active: true }],
+      },
+    ]);
+    setCreateRoleSheetOpen(false);
+    setCreateRoleForm(defaultCreateRoleForm);
+  };
+
+  const saveAddUser = () => {
+    const name = addUserForm.name.trim();
+    const email = addUserForm.email.trim();
+    if (!name || !email) return;
+    const roleOpt = userRoleOptions.find((r) => r.value === addUserForm.role);
+    const newUser: UserRow = {
+      id: `u-${Date.now()}`,
+      name,
+      email,
+      initials: getInitials(name),
+      role: addUserForm.role,
+      roleLabel: roleOpt?.label ?? addUserForm.roleLabel,
+      team: addUserForm.team,
+      status: addUserForm.status,
+      lastActive: "Just now",
+      showDelete: true,
+    };
+    setUsers((prev) => [...prev, newUser]);
+    setAddUserSheetOpen(false);
+    setAddUserForm(defaultAddUserForm);
+  };
+
+  const confirmDeleteUser = () => {
+    if (userToDelete == null) return;
+    setUsers((prev) => prev.filter((u) => u.id !== userToDelete));
+    setUserToDelete(null);
+  };
+
+  const confirmDeleteRole = () => {
+    if (roleToDelete == null) return;
+    const usersWithRole = users.filter((u) => u.role === roleToDelete).length;
+    if (usersWithRole > 0) return; // Dialog shows message, no action
+    setCustomRoles((prev) => prev.filter((r) => r.value !== roleToDelete));
+    setRoleToDelete(null);
+  };
+
   // Case Groups (context)
   const groups = caseClassification?.groups ?? [];
   const setGroups = caseClassification?.setGroups ?? (() => {});
@@ -906,10 +1071,12 @@ export default function SettingsPage() {
                   title="User Management"
                   description="Manage CRM users and roles"
                   action={
-                    <Button variant="outline" size="sm" className="gap-1.5">
-                      <Icon name="download" size="var(--tally-icon-size-sm)" />
-                      Export
-                    </Button>
+                    canManageUsers ? (
+                      <Button size="sm" className="gap-1.5" onClick={() => { setAddUserForm(defaultAddUserForm); setAddUserSheetOpen(true); }}>
+                        <Icon name="add" size="var(--tally-icon-size-sm)" />
+                        Add user
+                      </Button>
+                    ) : null
                   }
                 />
                 <div>
@@ -935,7 +1102,7 @@ export default function SettingsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {USERS_DATA.map((user) => (
+                      {users.map((user) => (
                         <TableRow key={user.id} className="group">
                           <TableCell>
                             <div className="flex items-center gap-density-md">
@@ -970,19 +1137,21 @@ export default function SettingsPage() {
                             {user.lastActive}
                           </TableCell>
                           <TableCell className="w-10 text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn(
-                                "h-7 w-7",
-                                user.showDelete && "hover:bg-[#C40000]/10 hover:text-[#C40000]"
-                              )}
-                            >
-                              <Icon
-                                name={user.showDelete ? "delete" : "more_vert"}
-                                size="var(--tally-icon-size-sm)"
-                              />
-                            </Button>
+                            {canManageUsers && currentUser && (user.email !== currentUser.email || user.name !== currentUser.name) ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 hover:bg-[#C40000]/10 hover:text-[#C40000]"
+                                onClick={() => setUserToDelete(user.id)}
+                                title="Delete user"
+                              >
+                                <Icon name="delete" size="var(--tally-icon-size-sm)" />
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" disabled title={!canManageUsers ? "You don't have permission to delete users" : "Cannot delete your own account"}>
+                                <Icon name="more_vert" size="var(--tally-icon-size-sm)" />
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -998,53 +1167,96 @@ export default function SettingsPage() {
                 <SectionHeader
                   title="Role Management"
                   description="Define roles and access levels"
-                  borderless
                   action={
-                    <Button variant="outline" size="sm" className="gap-1.5">
-                      <Icon name="add" size="var(--tally-icon-size-sm)" />
-                      Create Role
-                    </Button>
+                    canManageRoles ? (
+                      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setCreateRoleSheetOpen(true)}>
+                        <Icon name="add" size="var(--tally-icon-size-sm)" />
+                        Create Role
+                      </Button>
+                    ) : null
                   }
                 />
-                <CardContent className="p-density-lg">
-                  <div className="grid grid-cols-1 gap-density-lg sm:grid-cols-2">
-                    {ROLES_DATA.map((role) => (
-                      <div
-                        key={role.name}
-                        className="rounded-density-md border border-border p-density-lg transition-colors hover:border-gray-300 dark:border-gray-700 dark:hover:border-gray-600"
-                      >
-                        <div className="mb-density-sm flex items-center justify-between">
-                          <span
-                            className="font-bold text-gray-900 dark:text-gray-100"
-                            style={{ fontSize: "var(--tally-font-size-base)" }}
-                          >
-                            {role.name}
-                          </span>
-                          <Badge variant="outline" className="text-muted-foreground">
-                            {role.count} users
-                          </Badge>
-                        </div>
-                        <p
-                          className="mb-density-md leading-relaxed text-muted-foreground"
-                          style={{ fontSize: "var(--tally-font-size-xs)" }}
-                        >
-                          {role.description}
-                        </p>
-                        <div className="flex flex-wrap gap-density-xs">
-                          {role.badges.map((b) => (
-                            <Badge
-                              key={b.label}
-                              variant={b.active ? "success" : "outline"}
-                              className={!b.active ? "text-muted-foreground" : ""}
-                            >
-                              {b.label}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
+                <div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                          Role
+                        </TableHead>
+                        <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                          Type
+                        </TableHead>
+                        <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                          Users
+                        </TableHead>
+                        <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                          Description
+                        </TableHead>
+                        <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+                          Permissions
+                        </TableHead>
+                        <TableHead className="w-10 bg-gray-50 dark:bg-gray-800/50" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {displayRoles.map((role, idx) => (
+                        <TableRow key={role.value ?? `role-${idx}`} className="group">
+                          <TableCell>
+                            <div className="font-medium text-gray-900 dark:text-gray-100">
+                              {role.name}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {role.locked ? (
+                              <Badge variant="outline" className="gap-1 text-muted-foreground" title="Default role (cannot be deleted)">
+                                <Icon name="lock" size={12} />
+                                Default
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-muted-foreground">Custom</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-gray-700 dark:text-gray-300">
+                            {role.count}
+                          </TableCell>
+                          <TableCell className="max-w-[280px] truncate text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }} title={role.description}>
+                            {role.description}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-density-xs">
+                              {role.badges.slice(0, 4).map((b) => (
+                                <Badge
+                                  key={b.label}
+                                  variant={b.active ? "success" : "outline"}
+                                  className={!b.active ? "text-muted-foreground" : ""}
+                                  style={{ fontSize: "var(--tally-font-size-xs)" }}
+                                >
+                                  {b.label}
+                                </Badge>
+                              ))}
+                              {role.badges.length > 4 && (
+                                <span className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)" }}>+{role.badges.length - 4}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-10 text-right">
+                            {canManageRoles && !role.locked && role.value != null ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 hover:bg-[#C40000]/10 hover:text-[#C40000]"
+                                onClick={() => setRoleToDelete(role.value!)}
+                                title="Delete role"
+                              >
+                                <Icon name="delete" size="var(--tally-icon-size-sm)" />
+                              </Button>
+                            ) : null}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               </Card>
             )}
 
@@ -1066,38 +1278,31 @@ export default function SettingsPage() {
                     <TableHeader>
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="bg-gray-50 font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
-                          Resource
+                          Cases pipeline
                         </TableHead>
                         <TableHead className="bg-gray-50 text-center font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
-                          Administrator
+                          Admin
                         </TableHead>
                         <TableHead className="bg-gray-50 text-center font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
-                          Manager
+                          Case Manager
                         </TableHead>
                         <TableHead className="bg-gray-50 text-center font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
-                          Agent
-                        </TableHead>
-                        <TableHead className="bg-gray-50 text-center font-medium uppercase tracking-wider text-muted-foreground dark:bg-gray-800/50" style={{ fontSize: "var(--tally-font-size-xs)" }}>
-                          Viewer
+                          Case Agent
                         </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {PERMISSIONS_MATRIX.map((row) => (
+                      {PERMISSIONS_MATRIX_CASES.map((row) => (
                         <TableRow key={row.resource}>
                           <TableCell className="font-medium text-gray-900 dark:text-gray-100">
                             {row.resource}
                           </TableCell>
-                          {(["admin", "manager", "agent", "viewer"] as const).map((col) => {
+                          {(["Admin", "Case Manager", "Case Agent"] as const).map((col) => {
                             const icon = row[col];
                             const colorClass =
                               icon === "check"
                                 ? "text-[#008000]"
-                                : icon === "visibility"
-                                  ? "text-[#0074C4]"
-                                  : icon === "remove"
-                                    ? "text-[#C53B00]"
-                                    : "text-[#C40000]";
+                                : "text-[#C53B00]";
                             return (
                               <TableCell key={col} className="text-center">
                                 <Icon name={icon} size="var(--tally-icon-size-sm)" className={colorClass} />
@@ -1121,7 +1326,7 @@ export default function SettingsPage() {
                   action={
                     <Button size="sm" className="gap-1.5" onClick={() => openCaseTypePanel("new")}>
                       <Icon name="add" size="var(--tally-icon-size-sm)" />
-                      New Case Type
+                      New Case Class
                     </Button>
                   }
                 />
@@ -1845,11 +2050,11 @@ export default function SettingsPage() {
               </Card>
             )}
 
-            {/* Cool Off Period (Cases) */}
+            {/* Cooling-Off Period (Cases) */}
             {activeTab === "coolOffPeriod" && (
               <Card className="shadow-none">
                 <SectionHeader
-                  title="Cool-Off Period"
+                  title="Cooling-Off Period"
                   description="When a customer replies to a closed case, control whether to reopen it or create a new child case."
                 />
                 <CardContent className="p-density-lg pt-density-xl">
@@ -1983,6 +2188,58 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      {/* Confirm delete user */}
+      <AlertDialog open={userToDelete !== null} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent className="dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-gray-100">Delete user</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
+              Are you sure you want to remove {userToDelete != null ? users.find((u) => u.id === userToDelete)?.name : ""} from the CRM? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="hover:bg-[#C40000]/90 bg-[#C40000] text-white focus-visible:ring-[#C40000] dark:hover:bg-[#C40000]/80"
+              onClick={confirmDeleteUser}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm delete role */}
+      <AlertDialog open={roleToDelete !== null} onOpenChange={(open) => !open && setRoleToDelete(null)}>
+        <AlertDialogContent className="dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="dark:text-gray-100">Delete role</AlertDialogTitle>
+            <AlertDialogDescription className="dark:text-gray-400">
+              {roleToDelete != null && users.filter((u) => u.role === roleToDelete).length > 0 ? (
+                <>
+                  Cannot delete this role. {users.filter((u) => u.role === roleToDelete).length} user(s) have this role. Reassign them to another role first.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to delete the role &quot;{displayRoles.find((r) => r.value === roleToDelete)?.name ?? ""}&quot;? This cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            {roleToDelete != null && users.filter((u) => u.role === roleToDelete).length === 0 && (
+              <AlertDialogAction
+                className="hover:bg-[#C40000]/90 bg-[#C40000] text-white focus-visible:ring-[#C40000] dark:hover:bg-[#C40000]/80"
+                onClick={confirmDeleteRole}
+              >
+                Delete
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Confirm delete SLA rule */}
       <AlertDialog open={slaRuleToDelete !== null} onOpenChange={(open) => !open && setSlaRuleToDelete(null)}>
         <AlertDialogContent className="dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
@@ -2029,6 +2286,162 @@ export default function SettingsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Role slide-over panel */}
+      <Sheet open={createRoleSheetOpen} onOpenChange={setCreateRoleSheetOpen}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-white p-0 dark:border-gray-700 dark:bg-gray-900 sm:!max-w-[480px]"
+          style={{ maxWidth: "min(480px, 100vw)" }}
+        >
+          <SheetHeader className="flex flex-row items-start justify-between gap-density-md border-b border-border px-density-lg py-density-md dark:border-gray-700">
+            <div>
+              <SheetTitle className="font-semibold text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}>
+                Create Role
+              </SheetTitle>
+              <SheetDescription className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: "var(--tally-line-height-normal)" }}>
+                Define a new role with case pipeline permissions. The role will appear in Role Management and in the Add user dropdown.
+              </SheetDescription>
+            </div>
+            <SheetClose className="relative right-0 top-0 rounded-density-md p-density-sm hover:bg-gray-100 dark:hover:bg-gray-800" />
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-density-lg py-density-lg">
+            <div className="space-y-density-md">
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Name <span className="text-[#C40000]">*</span></label>
+                <Input
+                  value={createRoleForm.name}
+                  onChange={(e) => setCreateRoleForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Support Lead"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Description</label>
+                <Input
+                  value={createRoleForm.description}
+                  onChange={(e) => setCreateRoleForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="Short description of this role"
+                  className="h-9"
+                />
+              </div>
+              <div className="pt-2">
+                <p className="mb-density-sm font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Case permissions</p>
+                <div className="space-y-2">
+                  {[
+                    { key: "canViewAllCases" as const, label: "View all cases" },
+                    { key: "canCreateCase" as const, label: "Create case" },
+                    { key: "canAssignCase" as const, label: "Assign / Reassign" },
+                    { key: "canCloseCase" as const, label: "Close case" },
+                    { key: "canDeleteCase" as const, label: "Delete case" },
+                    { key: "canAddNotesAndComms" as const, label: "Add notes & communications" },
+                    { key: "canLinkCases" as const, label: "Link / unlink cases" },
+                  ].map(({ key, label }) => (
+                    <label key={key} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={createRoleForm[key]}
+                        onChange={(e) => setCreateRoleForm((f) => ({ ...f, [key]: (e.target as HTMLInputElement).checked }))}
+                      />
+                      <span style={{ fontSize: "var(--tally-font-size-sm)" }}>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          <SheetFooter className="flex flex-row justify-end gap-density-sm border-t border-border px-density-lg py-density-md dark:border-gray-700">
+            <Button variant="outline" onClick={() => { setCreateRoleSheetOpen(false); setCreateRoleForm(defaultCreateRoleForm); }}>Cancel</Button>
+            <Button onClick={saveCreateRole} disabled={!createRoleForm.name.trim()}>Create role</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Add User slide-over panel */}
+      <Sheet open={addUserSheetOpen} onOpenChange={setAddUserSheetOpen}>
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 border-l border-border bg-white p-0 dark:border-gray-700 dark:bg-gray-900 sm:!max-w-[480px]"
+          style={{ maxWidth: "min(480px, 100vw)" }}
+        >
+          <SheetHeader className="flex flex-row items-start justify-between gap-density-md border-b border-border px-density-lg py-density-md dark:border-gray-700">
+            <div>
+              <SheetTitle className="font-semibold text-gray-900 dark:text-gray-100" style={{ fontSize: "var(--tally-font-size-base)", lineHeight: "var(--tally-line-height-tight)" }}>
+                Add user
+              </SheetTitle>
+              <SheetDescription className="mt-density-xs text-muted-foreground" style={{ fontSize: "var(--tally-font-size-xs)", lineHeight: "var(--tally-line-height-normal)" }}>
+                Add a new CRM user and assign a role and team.
+              </SheetDescription>
+            </div>
+            <SheetClose className="relative right-0 top-0 rounded-density-md p-density-sm hover:bg-gray-100 dark:hover:bg-gray-800" />
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-density-lg py-density-lg">
+            <div className="space-y-density-md">
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Name <span className="text-[#C40000]">*</span></label>
+                <Input
+                  value={addUserForm.name}
+                  onChange={(e) => setAddUserForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="e.g. Jane Smith"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Email <span className="text-[#C40000]">*</span></label>
+                <Input
+                  type="email"
+                  value={addUserForm.email}
+                  onChange={(e) => setAddUserForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="e.g. jane.smith@tally.com"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Role</label>
+                <Select
+                  value={addUserForm.role}
+                  onChange={(e) => {
+                    const opt = userRoleOptions.find((r) => r.value === e.target.value);
+                    setAddUserForm((f) => ({ ...f, role: e.target.value, roleLabel: opt?.label ?? f.roleLabel }));
+                  }}
+                  className="h-9"
+                >
+                  {userRoleOptions.map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Team</label>
+                <Select
+                  value={addUserForm.team}
+                  onChange={(e) => setAddUserForm((f) => ({ ...f, team: e.target.value }))}
+                  className="h-9"
+                >
+                  {USER_TEAM_OPTIONS.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className="mb-density-xs block font-medium text-gray-700 dark:text-gray-300" style={{ fontSize: "var(--tally-font-size-sm)" }}>Status</label>
+                <Select
+                  value={addUserForm.status}
+                  onChange={(e) => setAddUserForm((f) => ({ ...f, status: e.target.value as "active" | "inactive" | "pending" }))}
+                  className="h-9"
+                >
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="inactive">Inactive</option>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <SheetFooter className="flex flex-row justify-end gap-density-sm border-t border-border px-density-lg py-density-md dark:border-gray-700">
+            <Button variant="outline" onClick={() => { setAddUserSheetOpen(false); setAddUserForm(defaultAddUserForm); }}>Cancel</Button>
+            <Button onClick={saveAddUser} disabled={!addUserForm.name.trim() || !addUserForm.email.trim()}>Add user</Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* Case Type slide-over panel */}
       <Sheet open={caseTypeSheetOpen} onOpenChange={setCaseTypeSheetOpen}>

@@ -30,6 +30,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/Popover/Popover";
+import { useCrmUser } from "@/lib/crm-user-context";
 import type { CaseItem, CasePriority, CaseStatus } from "@/types/crm";
 
 const CASE_PRIORITIES: CasePriority[] = ["Critical", "High", "Medium", "Low"];
@@ -155,12 +156,26 @@ function getResolutionTime(c: CaseItem): string | null {
 export default function CaseListPage() {
   const router = useRouter();
   const useDb = useDatabase();
+  const { user, casePermissions } = useCrmUser();
+  const currentUserName = user?.name ?? "John Smith";
+  const allowedListViewIds = React.useMemo(() => {
+    if (casePermissions.canViewAllCases) return LIST_VIEWS.map((v) => v.id);
+    return (["my", "my_open"] as ListViewId[]).filter((id) => LIST_VIEWS.some((v) => v.id === id));
+  }, [casePermissions.canViewAllCases]);
   const [viewMode, setViewMode] = React.useState<ViewMode>("list");
   const [tabViewSelectedCaseId, setTabViewSelectedCaseId] = React.useState<string | null>(null);
   const [tabViewNotePanelOpen, setTabViewNotePanelOpen] = React.useState(false);
   const [tabViewCallLogPanelOpen, setTabViewCallLogPanelOpen] = React.useState(false);
   const [tabViewEmailPanelOpen, setTabViewEmailPanelOpen] = React.useState(false);
-  const [listView, setListView] = React.useState<ListViewId>("all");
+  const [listViewRaw, setListViewRaw] = React.useState<ListViewId>("all");
+  const listView = allowedListViewIds.includes(listViewRaw) ? listViewRaw : allowedListViewIds[0];
+  const setListView = React.useCallback(
+    (id: ListViewId) => {
+      if (allowedListViewIds.includes(id)) setListViewRaw(id);
+      else setListViewRaw(allowedListViewIds[0]);
+    },
+    [allowedListViewIds]
+  );
   const kanbanRef = React.useRef<HTMLDivElement>(null);
   const [cases, setCases] = React.useState(() => mergeMockWithSession(mockCases));
   const [modalOpen, setModalOpen] = React.useState(false);
@@ -303,11 +318,11 @@ export default function CaseListPage() {
     // Apply list-view filter
     switch (listView) {
       case "my":
-        result = result.filter((c) => c.owner === "John Smith");
+        result = result.filter((c) => c.owner === currentUserName);
         break;
       case "my_open":
         result = result.filter(
-          (c) => c.owner === "John Smith" && c.status !== "Closed" && c.status !== "Resolved"
+          (c) => c.owner === currentUserName && c.status !== "Closed" && c.status !== "Resolved"
         );
         break;
       case "all_open":
@@ -321,7 +336,7 @@ export default function CaseListPage() {
         break;
     }
 
-    // Filter chips: Account, Type, Status, Priority, SLA, Owner (multi-select)
+    // Filter chips: Account, Case Class, Status, Priority, SLA, Owner (multi-select)
     if (accountFilter.length > 0) result = result.filter((c) => accountFilter.includes(c.accountName));
     if (statusFilter.length > 0) result = result.filter((c) => statusFilter.includes(c.status));
     if (priorityFilter.length > 0) result = result.filter((c) => priorityFilter.includes(c.priority));
@@ -376,7 +391,7 @@ export default function CaseListPage() {
     });
 
     return result;
-  }, [cases, listView, accountFilter, searchQuery, statusFilter, priorityFilter, typeFilter, ownerFilter, slaFilter, relationshipFilter, sortField, sortDir]);
+  }, [cases, listView, currentUserName, accountFilter, searchQuery, statusFilter, priorityFilter, typeFilter, ownerFilter, slaFilter, relationshipFilter, sortField, sortDir]);
 
   // In Tab view, keep selection in sync with filtered list (e.g. when filters change)
   React.useEffect(() => {
@@ -469,19 +484,23 @@ export default function CaseListPage() {
                 {filtered.filter((c) => c.slaStatus === "At Risk").length}
               </span>
             </span>
-            <Link
-              href="/crm/cases/summary"
-              className="font-medium text-[#2C365D] underline hover:underline dark:text-[#7c8cb8] dark:hover:underline"
-              style={{ fontSize: "var(--tally-font-size-sm)" }}
-            >
-              Case Summary Dashboard
-            </Link>
+            {casePermissions.canViewCaseSummary && (
+              <Link
+                href="/crm/cases/summary"
+                className="font-medium text-[#2C365D] underline hover:underline dark:text-[#7c8cb8] dark:hover:underline"
+                style={{ fontSize: "var(--tally-font-size-sm)" }}
+              >
+                Case Summary Dashboard
+              </Link>
+            )}
           </div>
         </div>
-        <Button size="md" className="gap-1.5" onClick={() => setModalOpen(true)}>
-          <Icon name="add" size="var(--tally-icon-size-sm)" className="mr-1" />
-          New Case
-        </Button>
+        {casePermissions.canCreateCase && (
+          <Button size="md" className="gap-1.5" onClick={() => setModalOpen(true)}>
+            <Icon name="add" size="var(--tally-icon-size-sm)" className="mr-1" />
+            New Case
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -623,14 +642,16 @@ export default function CaseListPage() {
               <Icon name="expand_more" size={14} className="shrink-0" />
             </PopoverTrigger>
             <PopoverContent align="start" className="min-w-[180px] p-1">
-              <button
-                type="button"
-                onClick={() => setListView("all")}
-                className="w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                Clear
-              </button>
-              {LIST_VIEWS.map((v) => {
+              {casePermissions.canViewAllCases && (
+                <button
+                  type="button"
+                  onClick={() => setListView("all")}
+                  className="w-full rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Clear
+                </button>
+              )}
+              {LIST_VIEWS.filter((v) => allowedListViewIds.includes(v.id)).map((v) => {
                 const selected = listView === v.id;
                 return (
                   <button
@@ -701,7 +722,7 @@ export default function CaseListPage() {
               )}
               style={{ fontSize: "var(--tally-font-size-xs)" }}
             >
-              {typeFilter.length === 0 ? "Type" : `Type (${typeFilter.length})`}
+              {typeFilter.length === 0 ? "Case Class" : `Case Class (${typeFilter.length})`}
               <Icon name="expand_more" size={14} className="shrink-0" />
             </PopoverTrigger>
             <PopoverContent align="start" className="min-w-[180px] p-1">
@@ -1067,7 +1088,7 @@ export default function CaseListPage() {
                 <TableRow className="hover:bg-transparent">
                   {renderSortHeader("caseNumber", "Case #")}
                   {renderSortHeader("accountName", "Account")}
-                  {renderSortHeader("type", "Type")}
+                  {renderSortHeader("type", "Case Class")}
                   {renderSortHeader("status", "Status")}
                   {renderSortHeader("priority", "Priority")}
                   {renderSortHeader("slaStatus", "SLA")}
@@ -1341,7 +1362,7 @@ function CaseKanbanCard({
         </p>
       )}
 
-      {/* Type + SLA row */}
+      {/* Case Class + SLA row */}
       <div className="mt-2 flex items-center justify-between">
         <Badge variant="outline" className="text-[10px]">
           {caseItem.type}

@@ -64,6 +64,7 @@ import {
 } from "@/components/Table/Table";
 import { getCaseByCaseNumber, getCaseById } from "@/lib/mock-data/cases";
 import { getAccountById, getOrgById, getAccountsByOrgId } from "@/lib/mock-data/accounts";
+import { useCrmUser } from "@/lib/crm-user-context";
 import type { Account, Activity, CaseItem, CasePriority, CaseStatus, Communication, Contact } from "@/types/crm";
 
 const priorityVariant: Record<CasePriority, "error" | "warning" | "info" | "outline" | "yellow"> = {
@@ -340,8 +341,9 @@ export default function CaseDetailContent({
     communicationsSearchQuery,
   ]);
 
-  const CURRENT_USER = "John Smith";
-  const TEAM_MEMBERS = ["John Smith", "Daniel Cooper"];
+  const { user, casePermissions } = useCrmUser();
+  const CURRENT_USER = user?.name ?? "John Smith";
+  const TEAM_MEMBERS = [CURRENT_USER, "Daniel Cooper"].filter((m, i, a) => a.indexOf(m) === i);
   const isUnassigned = caseItem.owner === "Unassigned";
 
   const handleAssign = React.useCallback(
@@ -464,50 +466,54 @@ export default function CaseDetailContent({
               </svg>
               Open Billing
             </Button>
-            <Popover open={assignPopoverOpen} onOpenChange={setAssignPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="md" className="gap-1.5" disabled={!onUpdateCase || updating}>
-                  <Icon name="person_add" size="var(--tally-icon-size-sm)" />
-                  {isUnassigned ? "Assign" : "Reassign"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-[220px] p-1">
-                <button
-                  type="button"
-                  onClick={() => handleAssign(CURRENT_USER)}
-                  className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm font-medium text-[#006180] hover:bg-[#E6F7FF] dark:text-[#80E0FF] dark:hover:bg-[#006180]/20"
-                >
-                  <Icon name="person" size={16} className="shrink-0" />
-                  Assign to me
-                </button>
-                <div className="my-1 border-t border-border dark:border-gray-700" />
-                <p className="px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Team members</p>
-                {TEAM_MEMBERS.filter((m) => m !== caseItem.owner).map((member) => (
+            {casePermissions.canAssignCase && (
+              <Popover open={assignPopoverOpen} onOpenChange={setAssignPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="md" className="gap-1.5" disabled={!onUpdateCase || updating}>
+                    <Icon name="person_add" size="var(--tally-icon-size-sm)" />
+                    {isUnassigned ? "Assign" : "Reassign"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-[220px] p-1">
                   <button
-                    key={member}
                     type="button"
-                    onClick={() => handleAssign(member)}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800",
-                      member === CURRENT_USER && "font-medium"
-                    )}
+                    onClick={() => handleAssign(CURRENT_USER)}
+                    className="flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm font-medium text-[#006180] hover:bg-[#E6F7FF] dark:text-[#80E0FF] dark:hover:bg-[#006180]/20"
                   >
-                    <Icon name="person" size={16} className="shrink-0 text-muted-foreground" />
-                    {member}
-                    {member === CURRENT_USER && <span className="ml-auto text-xs text-muted-foreground">(you)</span>}
+                    <Icon name="person" size={16} className="shrink-0" />
+                    Assign to me
                   </button>
-                ))}
-              </PopoverContent>
-            </Popover>
-            <Button
-              variant="outline"
-              size="md"
-              className="gap-1.5"
-              onClick={() => setCloseCaseModalOpen(true)}
-            >
-              <Icon name="lock" size="var(--tally-icon-size-sm)" />
-              Close Case
-            </Button>
+                  <div className="my-1 border-t border-border dark:border-gray-700" />
+                  <p className="px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Team members</p>
+                  {TEAM_MEMBERS.filter((m) => m !== caseItem.owner).map((member) => (
+                    <button
+                      key={member}
+                      type="button"
+                      onClick={() => handleAssign(member)}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded px-2.5 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800",
+                        member === CURRENT_USER && "font-medium"
+                      )}
+                    >
+                      <Icon name="person" size={16} className="shrink-0 text-muted-foreground" />
+                      {member}
+                      {member === CURRENT_USER && <span className="ml-auto text-xs text-muted-foreground">(you)</span>}
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            )}
+            {casePermissions.canCloseCase && (
+              <Button
+                variant="outline"
+                size="md"
+                className="gap-1.5"
+                onClick={() => setCloseCaseModalOpen(true)}
+              >
+                <Icon name="lock" size="var(--tally-icon-size-sm)" />
+                Close Case
+              </Button>
+            )}
             {showOpenInFullPage && (
               <Link
                 href={`/crm/cases/${caseItem.id}`}

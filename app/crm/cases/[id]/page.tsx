@@ -1,11 +1,13 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { getCaseById } from "@/lib/mock-data/cases";
 import { getSessionCase, setSessionCase } from "@/lib/session-cases";
 import { getAccountById } from "@/lib/mock-data/accounts";
 import { useCaseLinksOverrides } from "@/lib/case-links-overrides";
+import { useCrmUser } from "@/lib/crm-user-context";
 import AccountContextPanel from "@/components/crm/AccountContextPanel";
 import CaseDetailContent from "@/components/crm/CaseDetailContent";
 import LinkCaseModal from "@/components/crm/LinkCaseModal";
@@ -17,6 +19,7 @@ const useDatabase = () =>
 export default function CaseDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { casePermissions, canAccessCase } = useCrmUser();
   const caseId = params.id as string;
   const [linkModalOpen, setLinkModalOpen] = React.useState(false);
   const [notePanelOpen, setNotePanelOpen] = React.useState(false);
@@ -116,6 +119,17 @@ export default function CaseDetailPage() {
     );
   }
 
+  if (!canAccessCase(caseItem.owner)) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6">
+        <p className="text-muted-foreground">You don&apos;t have access to this case.</p>
+        <Link href="/crm/cases" className="text-[#2C365D] underline hover:no-underline dark:text-[#7c8cb8">
+          Back to Cases
+        </Link>
+      </div>
+    );
+  }
+
   const account = getAccountById(caseItem.accountId);
   const relatedCaseNumbersList = getRelatedCases(caseItem.id);
 
@@ -153,7 +167,7 @@ export default function CaseDetailPage() {
           onOpenCallLogPanel={() => setCallLogPanelOpen(true)}
           onOpenEmailPanel={() => setEmailPanelOpen(true)}
           onUpdateCase={handleUpdate}
-          onDeleteCase={useDb ? handleDelete : undefined}
+          onDeleteCase={useDb && casePermissions.canDeleteCase ? handleDelete : undefined}
           relatedCasesMap={useDb ? relatedCasesMap : undefined}
           notePanelOpen={notePanelOpen}
           onCloseNotePanel={() => setNotePanelOpen(false)}
