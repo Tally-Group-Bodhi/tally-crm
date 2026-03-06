@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs/Tabs";
 import { Icon } from "@/components/ui/icon";
+import Button from "@/components/Button/Button";
 import { cn } from "@/lib/utils";
 import type { Account, Contact } from "@/types/crm";
 
@@ -38,16 +39,31 @@ interface ContactDetailContentProps {
   contact: Contact;
   account: Account;
   showBreadcrumbs?: boolean;
+  isEditing?: boolean;
+  onUpdateContact?: (updates: Partial<Contact>) => void;
+  onSave?: () => void;
+  onCancel?: () => void;
+  onEdit?: () => void;
 }
 
 const ACTIVITY_COUNT = 5;
+
+const formInput =
+  "h-10 w-full rounded-density-md border border-border bg-white px-3 text-sm outline-none focus:border-[#2C365D] focus:ring-1 focus:ring-[#2C365D] dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100";
+const formLabel = "text-sm font-medium text-gray-900 dark:text-gray-100";
 
 export default function ContactDetailContent({
   contact,
   account,
   showBreadcrumbs = true,
+  isEditing = false,
+  onUpdateContact,
+  onSave,
+  onCancel,
+  onEdit,
 }: ContactDetailContentProps) {
   const [activeTab, setActiveTab] = React.useState("overview");
+  const canEdit = Boolean(onSave && onCancel && onUpdateContact);
 
   return (
     <div className="min-w-0 w-full p-density-xl">
@@ -74,7 +90,7 @@ export default function ContactDetailContent({
         )}
 
         {/* Header */}
-        <div className="mb-density-md">
+        <div className="mb-density-md flex items-start justify-between gap-4">
           <h1
             className="font-bold text-gray-900 dark:text-gray-100"
             style={{
@@ -84,7 +100,114 @@ export default function ContactDetailContent({
           >
             {contact.name}
           </h1>
+          {canEdit &&
+            (isEditing ? (
+              <div className="flex gap-2 shrink-0">
+                <Button variant="outline" size="md" onClick={onCancel}>
+                  Cancel
+                </Button>
+                <Button size="md" onClick={onSave}>
+                  Save
+                </Button>
+              </div>
+            ) : (
+              <Button size="md" onClick={onEdit} className="shrink-0">
+                <Icon name="edit" size={18} className="mr-1.5" />
+                Edit
+              </Button>
+            ))}
         </div>
+
+        {/* Contact information */}
+        {canEdit && (
+          <section className="mb-density-lg rounded-density-md border border-border bg-white p-density-lg dark:border-gray-700 dark:bg-gray-900">
+            <h3
+              className="mb-density-md font-bold text-gray-900 dark:text-gray-100"
+              style={{ fontSize: "var(--tally-font-size-sm)" }}
+            >
+              Contact information
+            </h3>
+            {isEditing ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className={formLabel}>Name</label>
+                  <input
+                    type="text"
+                    className={formInput}
+                    value={contact.name}
+                    onChange={(e) => onUpdateContact?.({ name: e.target.value })}
+                    placeholder="Full name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={formLabel}>Role</label>
+                  <input
+                    type="text"
+                    className={formInput}
+                    value={contact.role}
+                    onChange={(e) => onUpdateContact?.({ role: e.target.value })}
+                    placeholder="e.g. Energy Manager"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={formLabel}>Email</label>
+                  <input
+                    type="email"
+                    className={formInput}
+                    value={contact.email}
+                    onChange={(e) => onUpdateContact?.({ email: e.target.value })}
+                    placeholder="email@example.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={formLabel}>Phone</label>
+                  <input
+                    type="tel"
+                    className={formInput}
+                    value={contact.phone}
+                    onChange={(e) => onUpdateContact?.({ phone: e.target.value })}
+                    placeholder="Phone number"
+                  />
+                </div>
+                <div className="flex items-center gap-2 sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    id="contact-primary"
+                    checked={contact.isPrimary}
+                    onChange={(e) => onUpdateContact?.({ isPrimary: e.target.checked })}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                  <label htmlFor="contact-primary" className={formLabel}>
+                    Primary contact for account
+                  </label>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-density-md sm:grid-cols-2">
+                <DataHighlight label="Name" value={contact.name} />
+                <DataHighlight label="Role" value={contact.role || "—"} />
+                <DataHighlight label="Email" value={contact.email || "—"} />
+                <DataHighlight label="Phone" value={contact.phone || "—"} />
+                <DataHighlight label="Primary contact" value={contact.isPrimary ? "Yes" : "No"} />
+                <div className={cn("flex flex-col gap-0.5", "sm:col-span-2")}>
+                  <span
+                    className="font-medium uppercase tracking-wide text-muted-foreground"
+                    style={{ fontSize: "var(--tally-font-size-xs)" }}
+                  >
+                    Account
+                  </span>
+                  <Link
+                    href={`/crm/customer/accounts/${account.id}`}
+                    className="text-[#006180] hover:underline dark:text-[#80E0FF]"
+                    style={{ fontSize: "var(--tally-font-size-sm)" }}
+                  >
+                    {account.name}
+                  </Link>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>

@@ -16,9 +16,6 @@ import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { mockOrgs, getAccountsByOrgId } from "@/lib/mock-data/accounts";
 import type { Org, OrgType } from "@/types/crm";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs/Tabs";
-import { SummaryCard, EntityCard, CardGrid } from "@/components/crm/ManagementGrid";
-
 const statusVariant: Record<string, "success" | "error" | "outline"> = {
   Active: "success",
   Suspended: "error",
@@ -189,7 +186,6 @@ export default function OrgManagementPage() {
   const [search, setSearch] = React.useState("");
   const [modalOpen, setModalOpen] = React.useState(false);
   const [localOrgs, setLocalOrgs] = React.useState<Org[]>([]);
-  const [activeTab, setActiveTab] = React.useState("table");
 
   const allOrgs = React.useMemo(() => [...mockOrgs, ...localOrgs], [localOrgs]);
 
@@ -244,24 +240,7 @@ export default function OrgManagementPage() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-4 h-10 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-            <TabsTrigger
-              value="table"
-              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-            >
-              Table
-            </TabsTrigger>
-            <TabsTrigger
-              value="org-chart"
-              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-            >
-              Card View
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="table" className="mt-0">
-            <div className="rounded-lg border border-border bg-white dark:border-gray-700 dark:bg-gray-900">
+        <div className="rounded-lg border border-border bg-white dark:border-gray-700 dark:bg-gray-900">
               <Table dense>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -326,45 +305,6 @@ export default function OrgManagementPage() {
                 <div className="py-12 text-center text-sm text-muted-foreground">No organisations match your search.</div>
               )}
             </div>
-          </TabsContent>
-
-          <TabsContent value="org-chart" className="mt-0">
-            <div className="rounded-lg border border-[#e0e0e0] bg-[#f5f5f5] p-6 dark:border-gray-700 dark:bg-gray-900/50">
-              <SummaryCard
-                icon={<Icon name="apartment" size={22} className="text-[#5b21b6]" />}
-                title="Organisations"
-                count={filteredOrgs.length}
-                countLabel={filteredOrgs.length === 1 ? "organisation" : "organisations"}
-              />
-              <CardGrid>
-                {filteredOrgs.map((org: Org) => {
-                  const accounts = getAccountsByOrgId(org.id);
-                  const totalContacts = accounts.reduce((sum, acc) => sum + acc.contacts.length, 0);
-                  const sublabel = [
-                    accounts.length ? `${accounts.length} account${accounts.length !== 1 ? "s" : ""}` : null,
-                    totalContacts ? `${totalContacts} contact${totalContacts !== 1 ? "s" : ""}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ");
-                  return (
-                    <EntityCard
-                      key={org.id}
-                      type="org"
-                      name={org.name}
-                      sublabel={sublabel || undefined}
-                      href={`/crm/customer/orgs/${org.id}`}
-                    />
-                  );
-                })}
-              </CardGrid>
-              {filteredOrgs.length === 0 && (
-                <div className="py-12 text-center text-sm text-[#616161] dark:text-gray-400">
-                  No organisations match your search.
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        </Tabs>
       </div>
 
       {modalOpen && (

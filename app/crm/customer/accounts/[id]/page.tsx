@@ -5,10 +5,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Icon } from "@/components/ui/icon";
 import Button from "@/components/Button/Button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs/Tabs";
-import { getAccountById, getOrgById } from "@/lib/mock-data/accounts";
+import { getAccountById } from "@/lib/mock-data/accounts";
 import type { Account, Contact } from "@/types/crm";
-import OrgChartFlow from "@/components/crm/OrgChartFlow";
 
 const ACCOUNT_TYPES = ["Residential", "Commercial", "Industrial"] as const;
 const ACCOUNT_STATUSES = ["Active", "Suspended", "Closed"] as const;
@@ -39,7 +37,6 @@ export default function AccountSettingsPage() {
     phone: "",
     isPrimary: false,
   });
-  const [activeTab, setActiveTab] = React.useState("details");
 
   // Sync from URL if it changes (e.g. navigation)
   React.useEffect(() => {
@@ -213,23 +210,6 @@ export default function AccountSettingsPage() {
           )}
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4 h-10 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-            <TabsTrigger
-              value="details"
-              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-            >
-              Details
-            </TabsTrigger>
-            <TabsTrigger
-              value="org-chart"
-              className="text-gray-700 data-[state=active]:bg-white data-[state=active]:text-gray-900 dark:text-gray-300 dark:data-[state=active]:bg-gray-900 dark:data-[state=active]:text-gray-100"
-            >
-              Card View
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="details" className="mt-0">
         {/* Basic information */}
         <section className="mb-8 rounded-lg border border-border bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -646,23 +626,6 @@ export default function AccountSettingsPage() {
             </p>
           )}
         </section>
-          </TabsContent>
-
-          <TabsContent value="org-chart" className="mt-0">
-            {(() => {
-              const org = getOrgById(account.orgId);
-              return org ? (
-                <OrgChartFlow orgs={[org]} focusAccountId={account.id} />
-              ) : (
-              <div className="flex h-[400px] items-center justify-center rounded-lg border border-border bg-gray-50 dark:bg-gray-800/50">
-                <p className="text-muted-foreground" style={{ fontSize: "var(--tally-font-size-sm)" }}>
-                  Organisation not found for this account.
-                </p>
-              </div>
-              );
-            })()}
-          </TabsContent>
-        </Tabs>
       </div>
     </div>
   );

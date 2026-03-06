@@ -12,6 +12,7 @@ interface ContactContextPanelProps {
   contact: Contact;
   account: Account;
   className?: string;
+  onEdit?: () => void;
 }
 
 function DataRow({
@@ -53,6 +54,7 @@ export default function ContactContextPanel({
   contact,
   account,
   className,
+  onEdit,
 }: ContactContextPanelProps) {
   const initials = contact.name
     .split(" ")
@@ -91,7 +93,13 @@ export default function ContactContextPanel({
             {contact.email || "—"}
           </p>
         </div>
-        <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1 px-2" style={{ fontSize: "var(--tally-font-size-xs)" }}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 gap-1 px-2"
+          style={{ fontSize: "var(--tally-font-size-xs)" }}
+          onClick={() => onEdit?.()}
+        >
           <Icon name="edit" size={14} />
           Edit
         </Button>
